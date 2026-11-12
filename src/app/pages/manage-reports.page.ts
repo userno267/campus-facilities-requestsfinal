@@ -29,6 +29,7 @@ const STATUS_LABELS: Record<RequestStatus, string> = {
   assigned: 'Assigned',
   in_progress: 'In progress',
   awaiting_proof: 'Awaiting proof',
+  paused: 'Paused',
   completed: 'Completed',
   cancelled: 'Cancelled',
 };
@@ -38,6 +39,7 @@ const STATUS_COLORS: Record<RequestStatus, string> = {
   assigned: 'primary',
   in_progress: 'primary',
   awaiting_proof: 'warning',
+  paused: 'warning',
   completed: 'success',
   cancelled: 'danger',
 };
@@ -430,6 +432,64 @@ interface AssignForm {
             </section>
           }
 
+          <!-- PAUSE: a job in progress, only when a more urgent job is queued for the same staff member -->
+          @if (selected.status === 'in_progress') {
+            <section class="content-card action-card">
+              <div class="card-heading">
+                <div class="heading-icon">05</div>
+                <div>
+                  <h2>Pause This Job</h2>
+                  <p>Use this when the staff member must do a more urgent job first. The server only allows it when a higher-priority job is already in their queue.</p>
+                </div>
+              </div>
+
+              <div class="description-box">
+                <span>Reason for pausing</span>
+                <ion-item class="custom-input" lines="none">
+                  <ion-textarea
+                    [autoGrow]="true"
+                    maxlength="300"
+                    placeholder="For example: urgent leak in the library."
+                    [(ngModel)]="pauseRemark"
+                  ></ion-textarea>
+                </ion-item>
+              </div>
+
+              <ion-button
+                expand="block"
+                fill="outline"
+                class="send-back-action"
+                [disabled]="busy"
+                (click)="confirmPause()"
+              >
+                Pause Job
+              </ion-button>
+            </section>
+          }
+
+          <!-- PAUSED: the admin can only cancel it. The staff member resumes it. -->
+          @if (selected.status === 'paused') {
+            <section class="content-card action-card">
+              <div class="card-heading">
+                <div class="heading-icon">05</div>
+                <div>
+                  <h2>Paused Job</h2>
+                  <p>The staff member will resume it when they are free. You can cancel it if it is no longer needed.</p>
+                </div>
+              </div>
+
+              <ion-button
+                expand="block"
+                fill="outline"
+                class="cancel-action"
+                [disabled]="busy"
+                (click)="confirmCancel()"
+              >
+                Cancel Request
+              </ion-button>
+            </section>
+          }
+
           <!-- ASSIGNMENT -->
           @if (canChange) {
             <section class="content-card action-card">
@@ -473,9 +533,9 @@ interface AssignForm {
                       @for (s of staffForDepartment(); track s.id) {
                         <ion-select-option
                           [value]="s.id"
-                          [disabled]="!s.is_available && s.id !== selected.assigned_to"
+                          [disabled]="staffDisabled(s)"
                         >
-                          {{ s.name }} ({{ s.is_available ? 'Available' : 'Busy' }})
+                          {{ s.name }} ({{ staffLabel(s) }})
                         </ion-select-option>
                       } @empty {
                         <ion-select-option [value]="null" disabled>
@@ -1252,6 +1312,7 @@ export class ManageReportsPage implements OnInit, OnDestroy {
   };
 
   rejectRemark = '';
+  pauseRemark = '';
   readonly priorityChoices = PRIORITY_CHOICES;
 
   loading = false;
@@ -1328,6 +1389,7 @@ export class ManageReportsPage implements OnInit, OnDestroy {
 
       this.selected = detail;
       this.rejectRemark = '';
+      this.pauseRemark = '';
 
       this.form = {
         department_id: detail.department_id ?? detail.suggested_department_id,
@@ -1355,6 +1417,26 @@ export class ManageReportsPage implements OnInit, OnDestroy {
     return this.allStaff
       .filter((s) => s.department_id === deptId)
       .sort((a, b) => Number(b.is_available) - Number(a.is_available));
+  }
+
+  // A staff member who is working can still be given a job, but only one with a STRICTLY higher
+  // priority than the job they are working on (it waits in their queue). The server checks this again.
+  private priorityRank(p: RequestPriority | null): number {
+    return { low: 1, medium: 2, high: 3, urgent: 4 }[p ?? 'low'] ?? 0;
+  }
+
+  staffDisabled(s: StaffMember): boolean {
+    if (s.is_available || s.id === this.selected?.assigned_to) return false;
+    if (this.form.priority === null) return true;
+    return this.priorityRank(this.form.priority) <= this.priorityRank(s.working_priority);
+  }
+
+  staffLabel(s: StaffMember): string {
+    const queued = s.queued_count > 0 ? `, ${s.queued_count} queued` : '';
+    if (s.is_available) return 'Available' + queued;
+    return this.staffDisabled(s)
+      ? 'Busy, pick a higher priority to queue' + queued
+      : 'Working, job will be queued' + queued;
   }
 
   setDepartment(value: number) {
@@ -1432,6 +1514,52 @@ export class ManageReportsPage implements OnInit, OnDestroy {
       await this.loadQueue();
     } catch (e: any) {
       await this.feedback.toast(e.message ?? 'Could not cancel the request.');
+    } finally {
+      this.busy = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  async confirmPause() {
+    if (!this.selected || this.busy) return;
+
+    const requestId = this.selected.id;
+    const remark = this.pauseRemark.trim();
+
+    if (remark === '') {
+      await this.feedback.toast('Please write a reason for pausing.');
+      return;
+    }
+
+    const alert = await this.alertCtrl.create({
+      header: 'Pause this job?',
+      message: 'The staff member can then start the more urgent job in their queue.',
+      buttons: [
+        { text: 'Not yet', role: 'cancel' },
+        {
+          text: 'Yes, pause',
+          handler: () => this.doPause(requestId, remark),
+        },
+      ],
+    });
+
+    await alert.present();
+  }
+
+  private async doPause(requestId: number, remark: string) {
+    this.busy = true;
+    this.cdr.markForCheck();
+
+    try {
+      await this.adminService.pause(requestId, remark);
+
+      await this.feedback.toast('Job paused.', 'success');
+
+      this.pauseRemark = '';
+      this.selected = null;
+      await this.loadQueue();
+    } catch (e: any) {
+      await this.feedback.toast(e.message ?? 'Could not pause the job.');
     } finally {
       this.busy = false;
       this.cdr.markForCheck();

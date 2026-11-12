@@ -16,6 +16,7 @@ import {
   RequestStatus,
   RequestSummary,
   StaffJob,
+  StaffJobsView,
   StaffMember,
   StaffReviewList,
   SubmitProofPayload,
@@ -206,11 +207,11 @@ export class ApiService {
   }
 
   // ===== STAFF JOBS (Step 5) =====
-  // Returns the staff member's active job, or null when they have none.
-  async getCurrentJob(): Promise<StaffJob | null> {
+  // Returns the working job (or null), the queue of jobs not started yet, and the paused jobs.
+  async getCurrentJob(): Promise<StaffJobsView> {
     try {
       const response: any = await firstValueFrom(this.http.get(`${API_BASE}/jobs.php?action=current`));
-      return response.job ?? null;
+      return { job: response.job ?? null, queue: response.queue ?? [], paused: response.paused ?? [] };
     } catch (e: any) {
       throw new Error(e.error?.error ?? 'Failed to load your job');
     }
@@ -224,6 +225,42 @@ export class ApiService {
       return response.job;
     } catch (e: any) {
       throw new Error(e.error?.error ?? 'Could not start the job');
+    }
+  }
+
+  // Staff pauses the job they are working on. A reason is required. The server also checks that a
+  // more urgent job is waiting in their queue.
+  async pauseJob(requestId: number, remark: string): Promise<StaffJob> {
+    try {
+      const response: any = await firstValueFrom(
+        this.http.post(`${API_BASE}/jobs.php?action=pause`, { request_id: requestId, remark })
+      );
+      return response.job;
+    } catch (e: any) {
+      throw new Error(e.error?.error ?? 'Could not pause the job');
+    }
+  }
+
+  async resumeJob(requestId: number): Promise<StaffJob> {
+    try {
+      const response: any = await firstValueFrom(
+        this.http.post(`${API_BASE}/jobs.php?action=resume`, { request_id: requestId })
+      );
+      return response.job;
+    } catch (e: any) {
+      throw new Error(e.error?.error ?? 'Could not resume the job');
+    }
+  }
+
+  // Admin pauses a job in progress. Same rules as the staff pause.
+  async adminPauseRequest(requestId: number, remark: string): Promise<AdminRequestRow> {
+    try {
+      const response: any = await firstValueFrom(
+        this.http.post(`${API_BASE}/reports.php?action=pause`, { request_id: requestId, remark })
+      );
+      return response.request;
+    } catch (e: any) {
+      throw new Error(e.error?.error ?? 'Could not pause the job');
     }
   }
 

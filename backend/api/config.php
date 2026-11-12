@@ -76,6 +76,75 @@ function sendResponse($data, int $status = 200): void {
     exit;
 }
 
+// SQL that turns a priority label into a number (urgent 4 ... low 1). Used for the pause rule.
+// $col is a column name written in code, never user input.
+function priorityRankSql(string $col): string {
+    return "CASE $col WHEN 'urgent' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END";
+}
+
+// Pause a job: in_progress -> paused. Shared by the staff screen (jobs.php) and the admin (reports.php).
+// Rules, all checked on the server:
+//  - a reason is required;
+//  - only an in_progress job can be paused (awaiting_proof cannot);
+//  - the staff member must hold a queued (assigned) job with a STRICTLY higher priority.
+// $onlyStaffId: when a staff member calls this, their id (the job must be theirs). Admin passes null.
+// Stops with an error response, or returns when the job is paused.
+function pauseJob(PDO $conn, int $requestId, int $actorId, ?int $onlyStaffId, string $reason): void {
+    if ($reason === '') {
+        sendResponse(['error' => 'Please write a reason for pausing'], 400);
+    }
+    if (mb_strlen($reason) > 300) {
+        sendResponse(['error' => 'Reason must be 300 characters or less'], 400);
+    }
+    $fail = function (int $status, string $message) use ($conn): void {
+        if ($conn->inTransaction()) {
+            $conn->rollBack();
+        }
+        sendResponse(['error' => $message], $status);
+    };
+
+    $conn->beginTransaction();
+    try {
+        $cur = $conn->prepare('SELECT status, assigned_to, priority FROM requests WHERE id = ? FOR UPDATE');
+        $cur->execute([$requestId]);
+        $row = $cur->fetch();
+        if (!$row) {
+            $fail(404, 'Job not found');
+        }
+        if ($onlyStaffId !== null && (int) $row['assigned_to'] !== $onlyStaffId) {
+            $fail(403, 'This job is not assigned to you');
+        }
+        if ($row['status'] !== 'in_progress') {
+            $fail(409, $row['status'] === 'awaiting_proof'
+                ? 'A job that is awaiting proof cannot be paused'
+                : 'Only a job in progress can be paused');
+        }
+
+        // There must be a queued job that is strictly more urgent than this one.
+        $rank = priorityRankSql('priority');
+        $higher = $conn->prepare(
+            "SELECT 1 FROM requests
+             WHERE assigned_to = ? AND status = 'assigned' AND id <> ?
+               AND ($rank) > (CASE ? WHEN 'urgent' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END)
+             LIMIT 1"
+        );
+        $higher->execute([(int) $row['assigned_to'], $requestId, $row['priority']]);
+        if ($higher->fetchColumn() === false) {
+            $fail(409, 'You can only pause for a queued job with a higher priority');
+        }
+
+        $conn->prepare("UPDATE requests SET status = 'paused', updated_at = now() WHERE id = ?")
+             ->execute([$requestId]);
+        $conn->prepare('INSERT INTO request_events (request_id, status, remark, changed_by) VALUES (?, ?, ?, ?)')
+             ->execute([$requestId, 'paused', 'Paused: ' . $reason, $actorId]);
+
+        $conn->commit();
+    } catch (PDOException $e) {
+        error_log('Pause failed: ' . $e->getMessage());
+        $fail(500, 'Could not pause the job');
+    }
+}
+
 // Read the JSON request body as an array. Empty body gives []; bad JSON gives 400.
 function getJsonBody(): array {
     $raw = file_get_contents('php://input');

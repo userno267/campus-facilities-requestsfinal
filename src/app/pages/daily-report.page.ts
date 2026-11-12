@@ -168,51 +168,73 @@ function todayPh(): string {
     </ion-content>
   `,
   styles: [`
-    /* Force a light page with black text, whatever the phone's dark mode setting is.
-       Ionic reads these variables, so every ion-item, ion-label and toolbar on this page follows them. */
     :host {
-      --ion-background-color: #f6f5ee;
-      --ion-background-color-rgb: 246, 245, 238;
-      --ion-text-color: #000000;
-      --ion-text-color-rgb: 0, 0, 0;
+      display: block;
+
+      --purple-primary: #56318f;
+      --purple-secondary: #7651b5;
+      --purple-light: #b99ae8;
+      --lavender: #ede4fa;
+      --background-color: #faf8fd;
+      --text-dark: #302344;
+      --text-muted: #8c829b;
+      --border-color: #eee8f5;
+      --card-background: #ffffff;
+
+      /* Keep the page light with dark purple text, whatever the phone's dark mode setting is. */
+      --ion-background-color: #faf8fd;
+      --ion-background-color-rgb: 250, 248, 253;
+      --ion-text-color: #302344;
+      --ion-text-color-rgb: 48, 35, 68;
       --ion-item-background: #ffffff;
-      --ion-item-color: #000000;
+      --ion-item-color: #302344;
       --ion-toolbar-background: #ffffff;
-      --ion-toolbar-color: #000000;
+      --ion-toolbar-color: #302344;
       --ion-card-background: #ffffff;
-      --ion-card-color: #000000;
-    }
+      --ion-card-color: #302344;
+        }
 
     .page-content {
-      --background: #f6f5ee;
-      --color: #000000;
+      --background: var(--background-color);
+      --color: var(--text-dark);
     }
 
     .page-toolbar {
       --background: #ffffff;
-      --color: #000000;
-      border-bottom: 1px solid #d9d9d9;
+      --color: var(--text-dark);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    ion-title {
+      font-weight: 700;
     }
 
     .card {
-      background: #ffffff;
-      border: 1px solid #d9d9d9;
-      border-radius: 14px;
+      background: var(--card-background);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
       padding: 16px;
       margin-bottom: 14px;
-      color: #000000;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      color: var(--text-dark);
+      box-shadow: 0 6px 18px rgba(86, 49, 143, 0.07);
+      transition: transform .2s ease, box-shadow .2s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 24px rgba(86, 49, 143, 0.12);
     }
 
     .job-card { margin-bottom: 18px; }
 
     .empty-card {
-      background: #ffffff;
-      border: 1px solid #d9d9d9;
-      border-radius: 14px;
-      padding: 16px;
-      color: #000000;
+      background: var(--lavender);
+      border: 1px dashed var(--purple-light);
+      border-radius: 16px;
+      padding: 18px;
+      color: var(--purple-primary);
       text-align: center;
+      font-weight: 600;
       margin-bottom: 14px;
     }
 
@@ -220,35 +242,35 @@ function todayPh(): string {
     .job-title {
       margin: 0 0 8px;
       font-weight: 700;
-      color: #000000;
+      color: var(--purple-primary);
     }
 
     .job-title { font-size: 16px; }
 
     .group-title {
-      margin: 6px 4px 8px;
-      color: #000000;
+      margin: 18px 4px 8px;
+      color: var(--purple-primary);
       font-size: 15px;
       font-weight: 700;
     }
 
     .meta {
-      color: #000000;
+      color: var(--text-muted);
       font-size: 13px;
       margin: 4px 0;
-      opacity: 0.8;
     }
 
     .detail-text {
-      color: #000000;
+      color: var(--text-dark);
       font-size: 14px;
       margin: 4px 0 8px;
+      line-height: 1.5;
       white-space: pre-wrap;
     }
 
     .block-label {
-      margin: 10px 0 2px;
-      color: #000000;
+      margin: 12px 0 2px;
+      color: var(--purple-secondary);
       font-size: 12px;
       font-weight: 700;
       text-transform: uppercase;
@@ -257,14 +279,14 @@ function todayPh(): string {
 
     .date-item {
       --background: transparent;
-      --color: #000000;
-      --highlight-color-focused: #000000;
+      --color: var(--text-dark);
+      --highlight-color-focused: var(--purple-secondary);
       padding: 0;
     }
 
     .date-item ion-label,
     .date-item ion-input {
-      color: #000000;
+      color: var(--text-dark);
     }
 
     .row-actions {
@@ -274,6 +296,17 @@ function todayPh(): string {
       flex-wrap: wrap;
     }
 
+    ion-button {
+      --color: var(--purple-primary);
+      --border-color: var(--purple-primary);
+      --border-radius: 12px;
+    }
+
+    ion-button:not([fill='outline']) {
+      --background: var(--purple-primary);
+      --color: #ffffff;
+    }
+
     .summary-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
@@ -281,18 +314,18 @@ function todayPh(): string {
     }
 
     .stat {
-      background: #eeeeee;
-      border-radius: 12px;
-      padding: 10px;
+      background: var(--lavender);
+      border-radius: 14px;
+      padding: 12px;
       display: flex;
       flex-direction: column;
-      color: #000000;
+      color: var(--text-dark);
     }
 
     .stat-value {
-      font-size: 22px;
+      font-size: 24px;
       font-weight: 800;
-      color: #000000;
+      color: var(--purple-primary);
     }
 
     .plain-list {
@@ -301,20 +334,20 @@ function todayPh(): string {
     }
 
     .plain-list ion-item {
-      --background: #ffffff;
-      --color: #000000;
-      --border-color: #d9d9d9;
-    }
-
-    .plain-list ion-item h2,
-    .plain-list ion-item p,
-    .plain-list ion-item span {
-      color: #000000;
+      --background: var(--card-background);
+      --color: var(--text-dark);
+      --border-color: var(--border-color);
     }
 
     .plain-list ion-item h2 {
       font-weight: 700;
       margin: 0 0 4px;
+      color: var(--purple-primary);
+    }
+
+    .plain-list ion-item p,
+    .plain-list ion-item span {
+      color: var(--text-dark);
     }
 
     .facts {
@@ -323,17 +356,17 @@ function todayPh(): string {
       gap: 4px 10px;
       font-size: 13px;
       margin: 8px 0 0;
-      color: #000000;
+      color: var(--text-dark);
     }
 
     .facts dt {
-      color: #000000;
+      color: var(--purple-secondary);
       font-weight: 600;
     }
 
     .facts dd {
       margin: 0;
-      color: #000000;
+      color: var(--text-dark);
     }
   `],
 })
@@ -428,6 +461,7 @@ export class DailyReportPage implements OnInit, OnDestroy {
       assigned: 'Assigned',
       in_progress: 'In progress',
       awaiting_proof: 'Awaiting proof',
+      paused: 'Paused',
     };
     return labels[status] ?? status;
   }
@@ -451,5 +485,5 @@ export class DailyReportPage implements OnInit, OnDestroy {
     } catch {
       void this.feedback.toast('Could not build the PDF. Please try again.', 'danger');
     }
-  }
 }
+  }

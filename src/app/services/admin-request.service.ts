@@ -79,6 +79,15 @@ export class AdminRequestService {
     }
     await this.api.rejectProof(requestId, trimmed);
   }
+  // Pause a job in progress. A reason is required. The server checks that a more urgent job is queued.
+  async pause(requestId: number, remark: string): Promise<void> {
+    this.requireAdmin();
+    const trimmed = remark.trim();
+    if (trimmed === '') {
+      throw new Error('Please write a reason for pausing.');
+    }
+    await this.api.adminPauseRequest(requestId, trimmed);
+  }
   // Step 6: approve the staff proof. The server only allows this from awaiting_proof.
   async complete(requestId: number, remark: string = ''): Promise<void> {
     this.requireAdmin();

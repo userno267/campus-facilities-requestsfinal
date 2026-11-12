@@ -6,6 +6,7 @@ export type RequestStatus =
   | 'assigned'
   | 'in_progress'
   | 'awaiting_proof'
+  | 'paused'
   | 'completed'
   | 'cancelled';
 
@@ -115,8 +116,11 @@ export interface StaffMember {
   employee_id: string;
   department_id: number;
   department_name: string;
-  is_available: boolean;                // false while they have an active job
-  active_request_id: number | null;
+  is_available: boolean;                // false while they have a WORKING job (in progress or awaiting proof)
+  active_request_id: number | null;     // the working job
+  working_priority: RequestPriority | null; // priority of the working job, null when not working
+  queued_count: number;                 // assigned jobs not started yet
+  paused_count: number;                 // jobs on hold
 }
 
 // What the assign call sends. The server re-checks everything.
@@ -157,6 +161,29 @@ export interface StaffJob {
   after_photo_taken_at: string | null;  // C2: when the proof photo was taken (ISO UTC)
   created_at: string;
   updated_at: string;
+}
+
+// A job in the staff queue (assigned, not started) or on hold (paused). No photos.
+export interface StaffQueueItem {
+  id: number;
+  title: string;
+  description: string;
+  status: RequestStatus;
+  priority: RequestPriority | null;
+  category_name: string;
+  location_name: string;
+  latitude: number | null;
+  longitude: number | null;
+  paused_remark: string | null;         // "Paused: <reason>", only for paused jobs
+  created_at: string;
+  updated_at: string;
+}
+
+// Everything the My Job screen needs: the job being worked on, the queue and the paused jobs.
+export interface StaffJobsView {
+  job: StaffJob | null;                 // in_progress or awaiting_proof
+  queue: StaffQueueItem[];              // assigned, most urgent first
+  paused: StaffQueueItem[];
 }
 
 // What the proof call sends. The location and photo time are required by the server.

@@ -1,6 +1,6 @@
 <?php
 // jobs.php: the staff member's work on their own job (Step 5).
-// Staff only. Actions: current (GET), start (POST), proof (POST).
+// Staff only. Actions: current (GET), start (POST), pause (POST), resume (POST), proof (POST).
 require 'config.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
@@ -46,6 +46,30 @@ $jobFrom = '
     JOIN locations  l ON l.id = r.location_id
 ';
 
+// Short columns for the queue and paused lists: no photos, so the response stays small.
+// paused_remark is the reason written when the job was paused (the timeline remark starts with "Paused: ").
+$listColumns = <<<SQL
+    r.id,
+    r.title,
+    r.description,
+    r.status,
+    r.priority,
+    c.name AS category_name,
+    l.name AS location_name,
+    r.latitude,
+    r.longitude,
+    CASE WHEN r.status = 'paused' THEN (
+        SELECT e.remark FROM request_events e
+        WHERE e.request_id = r.id AND e.status = 'paused'
+        ORDER BY e.id DESC LIMIT 1
+    ) END AS paused_remark,
+    to_char(r.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created_at,
+    to_char(r.updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS updated_at
+SQL;
+
+// Most urgent first, then oldest first (the one waiting longest).
+$listOrder = "ORDER BY " . priorityRankSql('r.priority') . " DESC, r.created_at ASC, r.id ASC";
+
 // Stop with an error after undoing the open transaction.
 function failAndRollBack(PDO $conn, int $status, string $message): void {
     if ($conn->inTransaction()) {
@@ -83,25 +107,40 @@ function lockOwnJob(PDO $conn, int $requestId, int $staffId): string {
     return $row['status'];
 }
 
-// ---------- GET current: the staff member's one active job (or null) ----------
+// ---------- GET current: the working job, the queue and the paused jobs ----------
+// job   = the ONE job being worked on (in_progress or awaiting_proof), or null.
+// queue = assigned jobs not started yet, most urgent first.
+// paused = jobs on hold.
 if ($method === 'GET' && $action === 'current') {
     $user = requireUser($conn, ['staff']);
 
-    // The one-job index guarantees at most one row, so LIMIT 1 is safe.
+    // The one-working-job index guarantees at most one row, so LIMIT 1 is safe.
     $stmt = $conn->prepare(
         "SELECT $jobColumns $jobFrom
          WHERE r.assigned_to = ?
-           AND r.status IN ('assigned', 'in_progress', 'awaiting_proof')
+           AND r.status IN ('in_progress', 'awaiting_proof')
          LIMIT 1"
     );
     $stmt->execute([$user['id']]);
     $job = $stmt->fetch();
 
-    sendResponse(['job' => $job ?: null], 200);
+    $lists = [];
+    foreach (['queue' => 'assigned', 'paused' => 'paused'] as $key => $status) {
+        $q = $conn->prepare(
+            "SELECT $listColumns $jobFrom
+             WHERE r.assigned_to = ? AND r.status = ?
+             $listOrder"
+        );
+        $q->execute([$user['id'], $status]);
+        $lists[$key] = $q->fetchAll();
+    }
+
+    sendResponse(['job' => $job ?: null, 'queue' => $lists['queue'], 'paused' => $lists['paused']], 200);
 }
 
 // ---------- POST start: assigned -> in_progress ----------
-// Note: start does not change assigned_to, so it cannot hit the one-job index (no 23505 branch needed).
+// Only when the staff member has no working job (in_progress or awaiting_proof).
+// Why a check AND the index: the check gives a clear message, the index stops two taps at the same moment.
 if ($method === 'POST' && $action === 'start') {
     $user      = requireUser($conn, ['staff']);
     $requestId = requireRequestId(getJsonBody());
@@ -113,8 +152,18 @@ if ($method === 'POST' && $action === 'start') {
             failAndRollBack(
                 $conn,
                 409,
-                $status === 'in_progress' ? 'You already started this job' : 'This job cannot be started'
+                $status === 'in_progress' ? 'You already started this job'
+                    : ($status === 'paused' ? 'This job is paused. Use Resume.' : 'This job cannot be started')
             );
+        }
+
+        $busy = $conn->prepare(
+            "SELECT 1 FROM requests
+             WHERE assigned_to = ? AND status IN ('in_progress', 'awaiting_proof') LIMIT 1"
+        );
+        $busy->execute([$user['id']]);
+        if ($busy->fetchColumn() !== false) {
+            failAndRollBack($conn, 409, 'Finish or pause your current job before starting another');
         }
 
         $update = $conn->prepare(
@@ -130,8 +179,60 @@ if ($method === 'POST' && $action === 'start') {
 
         $conn->commit();
     } catch (PDOException $e) {
+        if ($e->getCode() === '23505') {
+            failAndRollBack($conn, 409, 'Finish or pause your current job before starting another');
+        }
         error_log('Start job failed: ' . $e->getMessage());
         failAndRollBack($conn, 500, 'Could not start the job');
+    }
+
+    sendResponse(['job' => loadJob($conn, $requestId, $jobColumns, $jobFrom)], 200);
+}
+
+// ---------- POST pause: in_progress -> paused (reason required) ----------
+// Only allowed when a queued job with a strictly higher priority is waiting. The rule is in pauseJob().
+if ($method === 'POST' && $action === 'pause') {
+    $user      = requireUser($conn, ['staff']);
+    $data      = getJsonBody();
+    $requestId = requireRequestId($data);
+    pauseJob($conn, $requestId, (int) $user['id'], (int) $user['id'], textField($data, 'remark'));
+    sendResponse(['job' => loadJob($conn, $requestId, $jobColumns, $jobFrom)], 200);
+}
+
+// ---------- POST resume: paused -> in_progress ----------
+// Only when the staff member has no working job.
+if ($method === 'POST' && $action === 'resume') {
+    $user      = requireUser($conn, ['staff']);
+    $requestId = requireRequestId(getJsonBody());
+
+    $conn->beginTransaction();
+    try {
+        $status = lockOwnJob($conn, $requestId, (int) $user['id']);
+        if ($status !== 'paused') {
+            failAndRollBack($conn, 409, 'Only a paused job can be resumed');
+        }
+
+        $busy = $conn->prepare(
+            "SELECT 1 FROM requests
+             WHERE assigned_to = ? AND status IN ('in_progress', 'awaiting_proof') LIMIT 1"
+        );
+        $busy->execute([$user['id']]);
+        if ($busy->fetchColumn() !== false) {
+            failAndRollBack($conn, 409, 'Finish your current job before resuming this one');
+        }
+
+        $conn->prepare("UPDATE requests SET status = 'in_progress', updated_at = now() WHERE id = ?")
+             ->execute([$requestId]);
+        $conn->prepare('INSERT INTO request_events (request_id, status, remark, changed_by) VALUES (?, ?, ?, ?)')
+             ->execute([$requestId, 'in_progress', 'Work resumed', $user['id']]);
+
+        $conn->commit();
+    } catch (PDOException $e) {
+        if ($e->getCode() === '23505') {
+            failAndRollBack($conn, 409, 'Finish your current job before resuming this one');
+        }
+        error_log('Resume job failed: ' . $e->getMessage());
+        failAndRollBack($conn, 500, 'Could not resume the job');
     }
 
     sendResponse(['job' => loadJob($conn, $requestId, $jobColumns, $jobFrom)], 200);
@@ -207,7 +308,7 @@ if ($method === 'POST' && $action === 'proof') {
 }
 
 // Known action with the wrong HTTP method: 405. Anything else: unknown action.
-$knownActions = ['current', 'start', 'proof'];
+$knownActions = ['current', 'start', 'pause', 'resume', 'proof'];
 if (in_array($action, $knownActions, true)) {
     sendResponse(['error' => 'Method not allowed'], 405);
 }

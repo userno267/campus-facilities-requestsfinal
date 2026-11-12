@@ -63,7 +63,7 @@ CREATE TABLE requests (
     priority        VARCHAR(10) CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
     status          VARCHAR(20) NOT NULL DEFAULT 'submitted'
                     CHECK (status IN ('submitted', 'assigned', 'in_progress',
-                                      'awaiting_proof', 'completed', 'cancelled')),
+                                      'awaiting_proof', 'paused', 'completed', 'cancelled')),
     created_by      INTEGER NOT NULL REFERENCES users(id),
     assigned_to     INTEGER REFERENCES users(id),
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -77,10 +77,11 @@ CREATE TABLE requests (
     CONSTRAINT after_longitude_range CHECK (after_longitude IS NULL OR after_longitude BETWEEN -180 AND 180)
 );
 
--- ONE-JOB RULE: a staff member can have at most one active request.
-CREATE UNIQUE INDEX one_active_job_per_staff
+-- ONE-WORKING-JOB RULE: a staff member can have at most one job they are working on.
+-- 'assigned' jobs are only queued (not started), and 'paused' jobs are on hold, so neither counts.
+CREATE UNIQUE INDEX one_working_job_per_staff
     ON requests (assigned_to)
-    WHERE status IN ('assigned', 'in_progress', 'awaiting_proof');
+    WHERE status IN ('in_progress', 'awaiting_proof');
 
 CREATE INDEX idx_requests_status     ON requests (status);
 CREATE INDEX idx_requests_created_by ON requests (created_by);
@@ -91,7 +92,7 @@ CREATE TABLE request_events (
     request_id INTEGER NOT NULL REFERENCES requests(id),
     status     VARCHAR(20) NOT NULL
                CHECK (status IN ('submitted', 'assigned', 'in_progress',
-                                 'awaiting_proof', 'completed', 'cancelled')),
+                                 'awaiting_proof', 'paused', 'completed', 'cancelled')),
     remark     TEXT,
     changed_by INTEGER NOT NULL REFERENCES users(id),
     changed_at TIMESTAMPTZ NOT NULL DEFAULT now()

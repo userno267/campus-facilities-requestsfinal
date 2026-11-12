@@ -6,7 +6,7 @@ import {
   IonBadge, IonButton, IonButtons, IonContent, IonHeader, IonItem,
   IonList, IonTextarea, IonTitle, IonToolbar,
 } from '@ionic/angular';
-import { RequestStatus, StaffJob } from '../models/request.model';
+import { RequestPriority, RequestStatus, StaffJob, StaffQueueItem } from '../models/request.model';
 import { StaffJobService } from '../services/staff-job.service';
 import { FeedbackService } from '../services/feedback.service';
 import { LiveUpdateService, LiveWatcher } from '../services/live-update.service';
@@ -22,6 +22,7 @@ const STATUS_LABELS: Record<RequestStatus, string> = {
   assigned: 'Not started',
   in_progress: 'In progress',
   awaiting_proof: 'Waiting for review',
+  paused: 'Paused',
   completed: 'Completed',
   cancelled: 'Cancelled',
 };
@@ -31,6 +32,7 @@ const STATUS_COLORS: Record<RequestStatus, string> = {
   assigned: 'primary',
   in_progress: 'primary',
   awaiting_proof: 'warning',
+  paused: 'warning',
   completed: 'success',
   cancelled: 'danger',
 };
@@ -131,17 +133,6 @@ type GpsState = 'idle' | 'loading' | GpsStatus;
             }
           }
         </div>
-
-        @if (job.status === 'assigned') {
-          <ion-button
-            expand="block"
-            class="action-btn ion-margin-top"
-            [disabled]="busy"
-            (click)="startJob()"
-          >
-            {{ busy ? 'Saving...' : 'Mark as started' }}
-          </ion-button>
-        }
 
         @if (job.status === 'in_progress') {
           <div class="job-card ion-margin-top">
@@ -285,10 +276,101 @@ type GpsState = 'idle' | 'loading' | GpsStatus;
             }
           </div>
         }
-      } @else if (!loading) {
+      } @else if (!loading && queue.length === 0 && paused.length === 0) {
         <div class="empty-card">
           No active job right now. New jobs appear here when the admin assigns you one.
         </div>
+      } @else if (!loading) {
+        <div class="empty-card">
+          You are not working on a job right now. Start one from your queue below.
+        </div>
+      }
+
+      <!-- PAUSE: only while a more urgent job is waiting in the queue -->
+      @if (job && job.status === 'in_progress' && canPause) {
+        <div class="job-card ion-margin-top">
+          <h3 class="section-title">A more urgent job is waiting</h3>
+          <p class="meta">
+            You can pause this job, do the urgent one first, then resume this one later.
+          </p>
+          <ion-list class="note-list">
+            <ion-item>
+              <ion-textarea
+                label="Reason for pausing"
+                labelPlacement="stacked"
+                [autoGrow]="true"
+                maxlength="300"
+                placeholder="For example: urgent leak in the library"
+                [(ngModel)]="pauseReason"
+              ></ion-textarea>
+            </ion-item>
+          </ion-list>
+          <ion-button
+            expand="block"
+            fill="outline"
+            class="action-btn-outline"
+            [disabled]="busy || pauseReason.trim() === ''"
+            (click)="pauseJob()"
+          >
+            {{ busy ? 'Saving...' : 'Pause this job' }}
+          </ion-button>
+        </div>
+      }
+
+      <!-- PAUSED JOBS -->
+      @if (paused.length > 0) {
+        <h3 class="section-title ion-margin-top">Paused jobs</h3>
+        @for (p of paused; track p.id) {
+          <div class="job-card">
+            <div class="job-head">
+              <h2 class="job-title">{{ p.title }}</h2>
+              <div class="badges">
+                <app-priority-badge [priority]="p.priority" />
+                <ion-badge [color]="statusColor(p.status)">{{ statusLabel(p.status) }}</ion-badge>
+              </div>
+            </div>
+            <p class="meta">{{ p.category_name }} · {{ p.location_name }}</p>
+            @if (p.paused_remark) {
+              <div class="rejected-card">
+                <p class="detail-text">{{ p.paused_remark }}</p>
+              </div>
+            }
+            <ion-button
+              expand="block"
+              class="action-btn ion-margin-top"
+              [disabled]="busy || job !== null"
+              (click)="resumeJob(p)"
+            >
+              {{ job !== null ? 'Finish your current job first' : (busy ? 'Saving...' : 'Resume') }}
+            </ion-button>
+          </div>
+        }
+      }
+
+      <!-- QUEUE: assigned, not started yet. Most urgent first. -->
+      @if (queue.length > 0) {
+        <h3 class="section-title ion-margin-top">Your queue</h3>
+        @for (q of queue; track q.id) {
+          <div class="job-card">
+            <div class="job-head">
+              <h2 class="job-title">{{ q.title }}</h2>
+              <div class="badges">
+                <app-priority-badge [priority]="q.priority" />
+                <ion-badge [color]="statusColor(q.status)">{{ statusLabel(q.status) }}</ion-badge>
+              </div>
+            </div>
+            <p class="meta">{{ q.category_name }} · {{ q.location_name }}</p>
+            <p class="detail-text">{{ q.description }}</p>
+            <ion-button
+              expand="block"
+              class="action-btn ion-margin-top"
+              [disabled]="busy || job !== null"
+              (click)="startQueued(q)"
+            >
+              {{ job !== null ? 'Finish or pause your current job first' : (busy ? 'Saving...' : 'Start this job') }}
+            </ion-button>
+          </div>
+        }
       }
     </ion-content>
   `,
@@ -791,6 +873,9 @@ export class AssignedJobPage implements OnDestroy {
   @ViewChild('galleryInput') galleryInput?: ElementRef<HTMLInputElement>;
 
   job: StaffJob | null = null;
+  queue: StaffQueueItem[] = [];
+  paused: StaffQueueItem[] = [];
+  pauseReason = '';
   loading = false;
   busy = false;
 
@@ -836,10 +921,15 @@ export class AssignedJobPage implements OnDestroy {
     }
 
     try {
-      const job = await this.jobService.loadCurrent();
+      const view = await this.jobService.loadCurrent();
+      const job = view.job;
       const changed = job?.id !== this.job?.id;
 
+      this.queue = view.queue;
+      this.paused = view.paused;
+
       if (changed) {
+        this.pauseReason = '';
         this.clearProof();
         this.clearStaffPosition();
       }
@@ -864,17 +954,69 @@ export class AssignedJobPage implements OnDestroy {
     }
   }
 
-  async startJob() {
+  // Start a job from the queue. The server refuses when you already have a working job.
+  async startQueued(item: StaffQueueItem) {
+    if (this.busy) return;
+
+    this.busy = true;
+    this.cdr.markForCheck();
+
+    try {
+      await this.jobService.start(item.id);
+      await this.feedback.toast('Job started.', 'success');
+      await this.load(true);
+    } catch (e: any) {
+      await this.feedback.toast(e.message ?? 'Could not start the job.');
+      await this.load(true);
+    } finally {
+      this.busy = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  // Pause is only offered when a queued job has a strictly higher priority (the server checks it too).
+  get canPause(): boolean {
+    if (!this.job || this.job.status !== 'in_progress') return false;
+    const mine = this.rank(this.job.priority);
+    return this.queue.some((q) => this.rank(q.priority) > mine);
+  }
+
+  private rank(p: RequestPriority | null): number {
+    return { low: 1, medium: 2, high: 3, urgent: 4 }[p ?? 'low'] ?? 0;
+  }
+
+  async pauseJob() {
     if (!this.job || this.busy) return;
 
     this.busy = true;
     this.cdr.markForCheck();
 
     try {
-      this.job = await this.jobService.start(this.job.id);
-      await this.feedback.toast('Job started.', 'success');
+      await this.jobService.pause(this.job.id, this.pauseReason);
+      this.pauseReason = '';
+      await this.feedback.toast('Job paused. Start the urgent job from your queue.', 'success');
+      await this.load(true);
     } catch (e: any) {
-      await this.feedback.toast(e.message ?? 'Could not start the job.');
+      await this.feedback.toast(e.message ?? 'Could not pause the job.');
+    } finally {
+      this.busy = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  async resumeJob(item: StaffQueueItem) {
+    if (this.busy) return;
+
+    this.busy = true;
+    this.cdr.markForCheck();
+
+    try {
+      await this.jobService.resume(item.id);
+      await this.feedback.toast('Job resumed.', 'success');
+      await this.load(true);
+    } catch (e: any) {
+      await this.feedback.toast(e.message ?? 'Could not resume the job.');
+      await this.load(true);
     } finally {
       this.busy = false;
       this.cdr.markForCheck();

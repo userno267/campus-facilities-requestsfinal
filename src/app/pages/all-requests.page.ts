@@ -17,6 +17,7 @@ const STATUS_LABELS: Record<RequestStatus, string> = {
   assigned: 'Assigned',
   in_progress: 'In progress',
   awaiting_proof: 'Awaiting proof',
+  paused: 'Paused',
   completed: 'Completed',
   cancelled: 'Cancelled',
 };
@@ -26,13 +27,14 @@ const STATUS_COLORS: Record<RequestStatus, string> = {
   assigned: 'primary',
   in_progress: 'primary',
   awaiting_proof: 'warning',
+  paused: 'warning',
   completed: 'success',
   cancelled: 'danger',
 };
 
 // Order of the filter choices follows the lifecycle.
 const STATUS_ORDER: RequestStatus[] = [
-  'submitted', 'assigned', 'in_progress', 'awaiting_proof', 'completed', 'cancelled',
+  'submitted', 'assigned', 'in_progress', 'awaiting_proof', 'paused', 'completed', 'cancelled',
 ];
 
 // Admin "Requests" tab (Step 8). A plain, read-only list of ALL requests in any status,
@@ -193,70 +195,110 @@ const STATUS_ORDER: RequestStatus[] = [
     </ion-content>
   `,
   styles: [`
+    :host {
+      display: block;
+
+      --purple-primary: #56318f;
+      --purple-secondary: #7651b5;
+      --purple-light: #b99ae8;
+      --lavender: #ede4fa;
+      --background-color: #faf8fd;
+      --text-dark: #302344;
+      --text-muted: #8c829b;
+      --border-color: #eee8f5;
+      --card-background: #ffffff;
+    }
+
     .page-content {
-      --background: #f6f5ee;
+      --background: var(--background-color);
     }
 
     .page-toolbar {
-      --background: #fbfaf5;
-      --color: #29483d;
-      border-bottom: 1px solid #e2e8dc;
+      --background: #ffffff;
+      --color: var(--text-dark);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    ion-title {
+      font-weight: 700;
+    }
+
+    ion-button {
+      --color: var(--purple-primary);
     }
 
     .card-list {
-      background: #fbfaf5;
-      border: 1px solid #e2e8dc;
-      border-radius: 14px;
+      background: var(--card-background);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
       overflow: hidden;
       padding: 0;
-      box-shadow: 0 4px 14px rgba(32, 59, 53, 0.05);
+      box-shadow: 0 6px 18px rgba(86, 49, 143, 0.07);
     }
 
     .card-list ion-item {
-      --background: #fbfaf5;
-      --border-color: #e2e8dc;
-      --color: #29483d;
+      --background: var(--card-background);
+      --border-color: var(--border-color);
+      --color: var(--text-dark);
+      --highlight-color-focused: var(--purple-secondary);
+      transition: background .2s ease;
+    }
+
+    .card-list ion-item[button]:hover {
+      --background: var(--lavender);
     }
 
     .card-list ion-item h2,
     .card-list ion-item h3 {
       margin: 0 0 4px;
       font-weight: 700;
-      color: #29483d;
+      color: var(--purple-primary);
+    }
+
+    .card-list ion-item p {
+      color: var(--text-dark);
     }
 
     .meta {
-      color: #87958a;
+      color: var(--text-muted);
       font-size: 13px;
     }
 
     .empty-card {
-      background: #fbfaf5;
-      border: 1px solid #e2e8dc;
-      border-radius: 14px;
-      padding: 16px;
-      color: #87958a;
+      background: var(--lavender);
+      border: 1px dashed var(--purple-light);
+      border-radius: 16px;
+      padding: 18px;
+      color: var(--purple-primary);
       text-align: center;
+      font-weight: 600;
     }
 
     .detail-card {
-      background: #fbfaf5;
-      border: 1px solid #e2e8dc;
-      border-radius: 14px;
+      background: var(--card-background);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
       padding: 16px;
-      box-shadow: 0 4px 14px rgba(32, 59, 53, 0.05);
+      box-shadow: 0 6px 18px rgba(86, 49, 143, 0.07);
+      transition: transform .2s ease, box-shadow .2s ease;
+    }
+
+    .detail-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 24px rgba(86, 49, 143, 0.12);
     }
 
     .detail-title {
       margin: 0 0 6px;
       font-size: 18px;
       font-weight: 700;
-      color: #29483d;
+      color: var(--purple-primary);
     }
 
     .detail-text {
-      color: #29483d;
+      color: var(--text-dark);
       margin: 8px 0 4px;
+      line-height: 1.5;
     }
 
     .badges {
@@ -270,8 +312,8 @@ const STATUS_ORDER: RequestStatus[] = [
       display: block;
       width: 100%;
       max-width: 100%;
-      border-radius: 14px;
-      border: 1px solid #e2e8dc;
+      border-radius: 16px;
+      border: 1px solid var(--border-color);
       margin-top: 12px;
     }
   `],

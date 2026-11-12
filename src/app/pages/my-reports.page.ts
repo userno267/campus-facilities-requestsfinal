@@ -43,6 +43,7 @@ const STATUS_LABELS: Record<RequestStatus, string> = {
   assigned: 'Assigned',
   in_progress: 'In progress',
   awaiting_proof: 'Awaiting proof',
+  paused: 'Paused',
   completed: 'Completed',
   cancelled: 'Cancelled',
 };
@@ -52,6 +53,7 @@ const STATUS_COLORS: Record<RequestStatus, string> = {
   assigned: 'primary',
   in_progress: 'primary',
   awaiting_proof: 'warning',
+  paused: 'warning',
   completed: 'success',
   cancelled: 'danger',
 };

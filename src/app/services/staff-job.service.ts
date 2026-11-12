@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { ApiService } from './api.service';
 import { AuthService } from './auth.service';
-import { ProofCapture, StaffJob, StaffReviewList } from '../models/request.model';
+import { ProofCapture, StaffJob, StaffJobsView, StaffReviewList } from '../models/request.model';
 
 // Staff-only wrapper. Pages call this, this calls ApiService.
 // The checks here give quick feedback. The server checks the role and the job owner again.
@@ -16,9 +16,24 @@ export class StaffJobService {
     }
   }
 
-  async loadCurrent(): Promise<StaffJob | null> {
+  // The working job, the queue and the paused jobs.
+  async loadCurrent(): Promise<StaffJobsView> {
     this.requireStaff();
     return this.api.getCurrentJob();
+  }
+
+  async pause(requestId: number, reason: string): Promise<StaffJob> {
+    this.requireStaff();
+    const trimmed = reason.trim();
+    if (trimmed === '') {
+      throw new Error('Please write why you are pausing this job.');
+    }
+    return this.api.pauseJob(requestId, trimmed);
+  }
+
+  async resume(requestId: number): Promise<StaffJob> {
+    this.requireStaff();
+    return this.api.resumeJob(requestId);
   }
 
   async start(requestId: number): Promise<StaffJob> {

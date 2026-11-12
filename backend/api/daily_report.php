@@ -58,7 +58,7 @@ $summaryStmt = $conn->prepare(<<<SQL
       (SELECT COUNT(DISTINCT e.request_id) FROM request_events e
          WHERE e.status = 'cancelled' AND e.changed_at >= ? AND e.changed_at < ?) AS cancelled,
       (SELECT COUNT(DISTINCT r.id) FROM requests r
-         WHERE r.status IN ('assigned', 'in_progress', 'awaiting_proof')
+         WHERE r.status IN ('assigned', 'in_progress', 'awaiting_proof', 'paused')
            AND EXISTS (SELECT 1 FROM request_events e
                          WHERE e.request_id = r.id AND e.changed_at >= ? AND e.changed_at < ?)
       ) AS still_open
@@ -108,7 +108,7 @@ $completedStmt = $conn->prepare(<<<SQL
       {$iso('MIN(CASE WHEN e.status = \'awaiting_proof\' THEN e.changed_at END)')} AS proof_sent_at,
       {$iso('MAX(CASE WHEN e.status = \'completed\' THEN e.changed_at END)')} AS completed_at,
       (SELECT COUNT(*) FROM request_events x
-         WHERE x.request_id = r.id AND x.status = 'in_progress'
+         WHERE x.request_id = r.id AND x.status = 'in_progress' AND x.remark IS DISTINCT FROM 'Work resumed'
            AND x.changed_at > (SELECT MIN(y.changed_at) FROM request_events y
                                 WHERE y.request_id = r.id AND y.status = 'awaiting_proof')
       ) AS send_back_count,
@@ -173,7 +173,7 @@ $openStmt = $conn->prepare(<<<SQL
     LEFT JOIN departments d ON d.id = r.department_id
     LEFT JOIN users s ON s.id = r.assigned_to
     LEFT JOIN users f ON f.id = r.created_by
-    WHERE r.status IN ('assigned', 'in_progress', 'awaiting_proof')
+    WHERE r.status IN ('assigned', 'in_progress', 'awaiting_proof', 'paused')
       AND r.id IN (
         SELECT e2.request_id FROM request_events e2
          WHERE e2.changed_at >= ? AND e2.changed_at < ?

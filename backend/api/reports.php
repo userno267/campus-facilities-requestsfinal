@@ -232,13 +232,15 @@ if ($method === 'GET' && $action === 'queue') {
     requireUser($conn, ['admin']);
 
     // submitted = needs a department and staff. assigned = can still be reassigned or cancelled.
+    // in_progress = being worked on, the admin can pause it when a more urgent job is queued.
+    // paused = on hold, the admin can still cancel it.
     // awaiting_proof = staff sent proof, the admin must review it and mark completed.
     // Proof requests are listed first because someone is waiting on them.
     // Then priority, urgent to low. Requests without a priority (not assigned yet) come after
     // the ones that have one. Inside each group, newest first (the old order).
     $stmt = $conn->prepare(
         "SELECT $adminColumns $adminFrom
-         WHERE r.status IN ('submitted', 'assigned', 'awaiting_proof')
+         WHERE r.status IN ('submitted', 'assigned', 'in_progress', 'paused', 'awaiting_proof')
          ORDER BY (r.status = 'awaiting_proof') DESC,
                   CASE r.priority
                       WHEN 'urgent' THEN 1
@@ -259,7 +261,7 @@ if ($method === 'GET' && $action === 'queue') {
 if ($method === 'GET' && $action === 'all') {
     requireUser($conn, ['admin']);
 
-    $validStatuses = ['submitted', 'assigned', 'in_progress', 'awaiting_proof', 'completed', 'cancelled'];
+    $validStatuses = ['submitted', 'assigned', 'in_progress', 'awaiting_proof', 'paused', 'completed', 'cancelled'];
     $status = $_GET['status'] ?? '';
 
     $sql    = "SELECT $adminColumns $adminFrom";
@@ -379,16 +381,23 @@ if ($method === 'POST' && $action === 'assign') {
             failAndRollBack($conn, 400, 'That staff member belongs to a different department');
         }
 
-        // Early busy check. Excluding this request lets someone be reassigned to the same request.
-        $busy = $conn->prepare(
-            "SELECT 1 FROM requests
+        // Busy check. A staff member can hold many queued (assigned) jobs, but only ONE working job
+        // (in_progress or awaiting_proof). While they are working, the admin may only queue a job that is
+        // STRICTLY more urgent than the one they are working on. Excluding this request lets someone be
+        // reassigned to the same request.
+        $working = $conn->prepare(
+            "SELECT priority FROM requests
              WHERE assigned_to = ? AND id <> ?
-               AND status IN ('assigned', 'in_progress', 'awaiting_proof')
+               AND status IN ('in_progress', 'awaiting_proof')
              LIMIT 1"
         );
-        $busy->execute([$staffId, $requestId]);
-        if ($busy->fetchColumn() !== false) {
-            failAndRollBack($conn, 409, 'Staff member is already busy');
+        $working->execute([$staffId, $requestId]);
+        $workingRow = $working->fetch();
+        if ($workingRow) {
+            $rank = ['low' => 1, 'medium' => 2, 'high' => 3, 'urgent' => 4];
+            if ($rank[$priority] <= ($rank[$workingRow['priority']] ?? 0)) {
+                failAndRollBack($conn, 409, 'Staff member is already busy with a job of the same or higher priority');
+            }
         }
 
         $update = $conn->prepare(
@@ -419,7 +428,7 @@ if ($method === 'POST' && $action === 'assign') {
     sendResponse(['request' => loadAdminRequest($conn, $requestId, $adminColumns, $adminFrom)], 200);
 }
 
-// ---------- POST cancel a request (admin only, before work starts) ----------
+// ---------- POST cancel a request (admin only, before work starts, or while it is paused) ----------
 if ($method === 'POST' && $action === 'cancel') {
     $admin = requireUser($conn, ['admin']);
     $data  = getJsonBody();
@@ -439,12 +448,11 @@ if ($method === 'POST' && $action === 'cancel') {
         if (!$current) {
             failAndRollBack($conn, 404, 'Request not found');
         }
-        if (!in_array($current['status'], ['submitted', 'assigned'], true)) {
+        if (!in_array($current['status'], ['submitted', 'assigned', 'paused'], true)) {
             failAndRollBack($conn, 409, 'This request can no longer be cancelled');
         }
 
-        // assigned_to is kept for history. The one-job index ignores cancelled rows,
-        // so the staff member becomes available again straight away.
+        // assigned_to is kept for history. The one-working-job index ignores cancelled rows.
         $update = $conn->prepare("UPDATE requests SET status = 'cancelled', updated_at = now() WHERE id = ?");
         $update->execute([$requestId]);
 
@@ -559,6 +567,17 @@ if ($method === 'POST' && $action === 'reject_proof') {
     sendResponse(['request' => loadAdminRequest($conn, $requestId, $adminColumns, $adminFrom)], 200);
 }
 
+// ---------- POST pause: in_progress -> paused (admin) ----------
+// Same rules as the staff pause in jobs.php (shared helper in config.php): a reason is required, and the
+// staff member must hold a queued job with a strictly higher priority.
+if ($method === 'POST' && $action === 'pause') {
+    $admin     = requireUser($conn, ['admin']);
+    $data      = getJsonBody();
+    $requestId = positiveInt($data['request_id'] ?? null, 'A request id is required');
+    pauseJob($conn, $requestId, (int) $admin['id'], null, textField($data, 'remark'));
+    sendResponse(['request' => loadAdminRequest($conn, $requestId, $adminColumns, $adminFrom)], 200);
+}
+
 // ---------- GET my_detail: one of my own requests with photos, GPS, timeline and review (faculty only) ----------
 // Feature 2. The owner check is in the SQL, so a faculty member cannot open someone else's request.
 // A request that is not theirs gets the same 404 as a missing one, so ids cannot be guessed.
@@ -611,7 +630,7 @@ if ($method === 'GET' && $action === 'my_detail') {
 }
 
 // A known action sent with the wrong HTTP method gets 405. Anything else is unknown.
-$knownActions = ['create', 'mine', 'queue', 'all', 'detail', 'assign', 'cancel', 'complete', 'reject_proof', 'my_detail'];
+$knownActions = ['create', 'mine', 'queue', 'all', 'detail', 'assign', 'cancel', 'complete', 'reject_proof', 'pause', 'my_detail'];
 if (in_array($action, $knownActions, true)) {
     sendResponse(['error' => 'Method not allowed'], 405);
 }

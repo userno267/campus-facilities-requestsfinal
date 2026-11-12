@@ -46,7 +46,7 @@ export interface DailyReportOpenJob {
   id: number;
   title: string;
   priority: RequestPriority | null;
-  status: 'assigned' | 'in_progress' | 'awaiting_proof';
+  status: 'assigned' | 'in_progress' | 'awaiting_proof' | 'paused';
   category_name: string;
   location_name: string;
   department_name: string | null;
