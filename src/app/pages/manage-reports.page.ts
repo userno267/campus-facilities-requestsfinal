@@ -1,4 +1,3 @@
-
 import {
   ChangeDetectorRef, Component, OnDestroy, OnInit, inject,
 } from '@angular/core';
@@ -6,7 +5,7 @@ import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
   AlertController, IonBadge, IonButton, IonButtons, IonContent,
-  IonHeader, IonItem, IonLabel, IonList, IonSelect, IonSelectOption,
+  IonHeader, IonItem, IonSelect, IonSelectOption,
   IonTextarea, IonTitle, IonToolbar, IonSpinner,
 } from '@ionic/angular';
 
@@ -63,8 +62,6 @@ interface AssignForm {
     IonContent,
     IonHeader,
     IonItem,
-    IonLabel,
-    IonList,
     IonSelect,
     IonSelectOption,
     IonTextarea,
@@ -76,693 +73,889 @@ interface AssignForm {
   ],
   template: `
     <ion-header class="ion-no-border">
-      <ion-toolbar class="page-toolbar">
+      <ion-toolbar class="top-toolbar">
 
         @if (selected) {
           <ion-buttons slot="start">
-            <ion-button class="back-button" (click)="backToQueue()">
-              ← Back
-            </ion-button>
+            <ion-button class="back-button" (click)="backToQueue()">← Back</ion-button>
           </ion-buttons>
-
           <ion-title>Request #{{ selected.id }}</ion-title>
         } @else {
-          <ion-title>Manage Reports</ion-title>
-
+          <div class="brand" slot="start">
+            <div class="brand-icon">CR</div>
+            <div class="brand-info">
+              <strong>Campus Reports</strong>
+              <span>Admin · Manage Reports</span>
+            </div>
+          </div>
           <ion-buttons slot="end">
-            <ion-button
-              class="refresh-button"
-              (click)="loadQueue()"
-              [disabled]="loading"
-            >
-              Refresh
-            </ion-button>
+            <ion-button class="refresh-button" (click)="loadQueue()" [disabled]="loading">Refresh</ion-button>
           </ion-buttons>
         }
 
       </ion-toolbar>
     </ion-header>
 
-    <ion-content class="page-content">
+    <ion-content class="dashboard-content">
 
-      <div class="page-wrapper">
+      <main class="dashboard-container">
 
         @if (!selected) {
 
-          <!-- QUEUE HEADER -->
-          <div class="page-heading">
-            <div>
+          <!-- Welcome Section -->
+          <section class="welcome-section">
+            <div class="welcome-text">
               <span class="eyebrow">ADMINISTRATION</span>
-              <h1>Manage Reports</h1>
-              <p>Review, assign, and monitor campus requests.</p>
+
+              <h1>
+                Manage <span>Reports</span>
+              </h1>
+
+              <p>
+                Review, assign and monitor campus requests. Tap a request to see its
+                details, proof and history.
+              </p>
+
+              <div class="welcome-role">
+                <span class="status-dot"></span>
+                {{ queue.length }} request{{ queue.length === 1 ? '' : 's' }} in the queue
+              </div>
             </div>
 
-            <div class="queue-counter">
-              <span class="counter-number">{{ queue.length }}</span>
-              <span class="counter-label">Total requests</span>
+            <div class="welcome-illustration">
+              <div class="illustration-circle">
+                <span class="illustration-icon">✦</span>
+                <div class="illustration-shield">▤</div>
+              </div>
             </div>
-          </div>
+          </section>
 
-          <!-- QUEUE -->
-          <div class="section-heading">
-            <div>
-              <h2>Request Queue</h2>
-              <p>Requests that need administrative attention.</p>
+          <!-- Queue -->
+          <section class="section-block">
+            <div class="section-heading">
+              <div>
+                <span class="eyebrow">REQUEST QUEUE</span>
+                <h2>Needs attention</h2>
+                <p>Requests waiting for review, assignment or approval.</p>
+              </div>
             </div>
-          </div>
 
-          @if (loading && queue.length === 0) {
-            <div class="loading-card">
-              <ion-spinner name="crescent"></ion-spinner>
-              <p>Loading requests...</p>
-            </div>
-          } @else if (queue.length > 0) {
+            @if (loading && queue.length === 0) {
+              <div class="loading-card">
+                <ion-spinner name="crescent"></ion-spinner>
+                <p>Loading requests...</p>
+              </div>
+            } @else if (queue.length > 0) {
 
-            <div class="request-list">
+              <div class="request-list">
+                @for (r of queue; track r.id) {
+                  <button type="button" class="request-card" (click)="openRequest(r.id)">
+                    <div class="request-card-main">
 
-              @for (r of queue; track r.id) {
-                <button
-                  type="button"
-                  class="request-card"
-                  (click)="openRequest(r.id)"
-                >
-                  <div class="request-card-main">
-
-                    <div class="request-icon">
-                      <span>CR</span>
-                    </div>
-
-                    <div class="request-information">
-                      <div class="request-title-row">
-                        <h3>{{ r.title }}</h3>
-
-                        <span class="request-id">
-                          #{{ r.id }}
-                        </span>
+                      <div class="request-icon">
+                        <span>CR</span>
                       </div>
 
-                      <p class="request-category">
-                        {{ r.category_name }} · {{ r.location_name }}
-                      </p>
+                      <div class="request-information">
+                        <div class="request-title-row">
+                          <h3>{{ r.title }}</h3>
+                          <span class="request-id">#{{ r.id }}</span>
+                        </div>
 
-                      <p class="request-assignment">
-                        Suggested department:
-                        <strong>
-                          {{ departmentName(r.suggested_department_id) }}
-                        </strong>
-                      </p>
-
-                      @if (r.assigned_name) {
-                        <p class="request-assignment">
-                          Assigned to:
-                          <strong>{{ r.assigned_name }}</strong>
+                        <p class="request-category">
+                          {{ r.category_name }} · {{ r.location_name }}
                         </p>
-                      }
+
+                        <p class="request-assignment">
+                          Suggested department:
+                          <strong>{{ departmentName(r.suggested_department_id) }}</strong>
+                        </p>
+
+                        @if (r.assigned_name) {
+                          <p class="request-assignment">
+                            Assigned to: <strong>{{ r.assigned_name }}</strong>
+                          </p>
+                        }
+                      </div>
+
+                      <div class="request-card-side">
+                        <app-priority-badge [priority]="r.priority" />
+
+                        <ion-badge [color]="statusColor(r.status)">
+                          {{ statusLabel(r.status) }}
+                        </ion-badge>
+
+                        <span class="view-details">View details →</span>
+                      </div>
+
                     </div>
+                  </button>
+                }
+              </div>
 
-                    <div class="request-card-side">
-                      <app-priority-badge [priority]="r.priority" />
+            } @else {
+              <div class="empty-card">
+                <div class="empty-icon">✓</div>
+                <h3>All caught up!</h3>
+                <p>No requests are currently waiting for review.</p>
 
-                      <ion-badge [color]="statusColor(r.status)">
-                        {{ statusLabel(r.status) }}
-                      </ion-badge>
-
-                      <span class="view-details">View details →</span>
-                    </div>
-
-                  </div>
-                </button>
-              }
-
-            </div>
-
-          } @else {
-            <div class="empty-card">
-              <div class="empty-icon">✓</div>
-              <h3>All caught up!</h3>
-              <p>No requests are currently waiting for review.</p>
-
-              <ion-button
-                fill="outline"
-                class="empty-refresh"
-                (click)="loadQueue()"
-              >
-                Refresh queue
-              </ion-button>
-            </div>
-          }
+                <ion-button fill="outline" class="empty-refresh" (click)="loadQueue()">
+                  Refresh queue
+                </ion-button>
+              </div>
+            }
+          </section>
 
         } @else {
 
-          <!-- REQUEST DETAILS -->
-          <div class="detail-heading">
-            <div>
+          <!-- Detail hero -->
+          <section class="welcome-section">
+            <div class="welcome-text">
               <span class="eyebrow">REQUEST DETAILS</span>
+
               <h1>{{ selected.title }}</h1>
+
               <p>Review the report information and take the necessary action.</p>
-            </div>
 
-            <ion-badge [color]="statusColor(selected.status)">
-              {{ statusLabel(selected.status) }}
-            </ion-badge>
-          </div>
-
-          <!-- BASIC INFORMATION -->
-          <section class="content-card">
-            <div class="card-heading">
-              <div class="heading-icon">01</div>
-              <div>
-                <h2>Report Information</h2>
-                <p>Basic details submitted by the faculty member.</p>
+              <div class="welcome-role">
+                <span class="status-dot"></span>
+                {{ statusLabel(selected.status) }}
               </div>
             </div>
 
-            <div class="information-grid">
-              <div class="information-item">
-                <span>Request ID</span>
-                <strong>#{{ selected.id }}</strong>
+            <div class="welcome-illustration">
+              <div class="illustration-circle">
+                <span class="illustration-icon">✦</span>
+                <div class="illustration-shield">#{{ selected.id }}</div>
               </div>
-
-              <div class="information-item">
-                <span>Category</span>
-                <strong>{{ selected.category_name }}</strong>
-              </div>
-
-              <div class="information-item">
-                <span>Location</span>
-                <strong>{{ selected.location_name }}</strong>
-              </div>
-
-              <div class="information-item">
-                <span>Date reported</span>
-                <strong>{{ selected.created_at | date: 'mediumDate' }}</strong>
-              </div>
-
-              <div class="information-item">
-                <span>Department</span>
-                <strong>{{ selected.department_name || 'Not assigned' }}</strong>
-              </div>
-
-              <div class="information-item">
-                <span>Priority</span>
-                <strong>
-                  @if (selected.priority) {
-                    <app-priority-badge [priority]="selected.priority" />
-                  } @else {
-                    Not set
-                  }
-                </strong>
-              </div>
-            </div>
-
-            <div class="description-box">
-              <span>Description</span>
-              <p>{{ selected.description }}</p>
             </div>
           </section>
 
-          <!-- BEFORE PHOTO -->
-          <section class="content-card">
-            <div class="card-heading">
-              <div class="heading-icon">02</div>
-              <div>
-                <h2>Reported Photo</h2>
-                <p>Original photo attached to the request.</p>
+          <!-- 01 Report information -->
+          <section class="section-block">
+            <div class="card">
+              <div class="card-heading">
+                <div class="heading-icon">01</div>
+                <div>
+                  <h2>Report Information</h2>
+                  <p>Basic details submitted by the faculty member.</p>
+                </div>
+              </div>
+
+              <div class="information-grid">
+                <div class="information-item">
+                  <span>Request ID</span>
+                  <strong>#{{ selected.id }}</strong>
+                </div>
+
+                <div class="information-item">
+                  <span>Category</span>
+                  <strong>{{ selected.category_name }}</strong>
+                </div>
+
+                <div class="information-item">
+                  <span>Location</span>
+                  <strong>{{ selected.location_name }}</strong>
+                </div>
+
+                <div class="information-item">
+                  <span>Date reported</span>
+                  <strong>{{ selected.created_at | date: 'mediumDate' }}</strong>
+                </div>
+
+                <div class="information-item">
+                  <span>Department</span>
+                  <strong>{{ selected.department_name || 'Not assigned' }}</strong>
+                </div>
+
+                <div class="information-item">
+                  <span>Priority</span>
+                  <strong>
+                    @if (selected.priority) {
+                      <app-priority-badge [priority]="selected.priority" />
+                    } @else {
+                      Not set
+                    }
+                  </strong>
+                </div>
+              </div>
+
+              <div class="description-box">
+                <span>Description</span>
+                <p>{{ selected.description }}</p>
               </div>
             </div>
-
-            <img
-              class="report-photo"
-              [src]="'data:image/jpeg;base64,' + selected.before_photo"
-              alt="Before photo"
-            />
           </section>
 
-          <!-- LOCATION -->
-          <section class="content-card">
-            <div class="card-heading">
-              <div class="heading-icon">03</div>
-              <div>
-                <h2>Problem Location</h2>
-                <p>Location information recorded with the report.</p>
+          <!-- 02 Reported photo -->
+          <section class="section-block">
+            <div class="card">
+              <div class="card-heading">
+                <div class="heading-icon">02</div>
+                <div>
+                  <h2>Reported Photo</h2>
+                  <p>Original photo attached to the request.</p>
+                </div>
               </div>
-            </div>
 
-            <div class="location-information">
-              <p>
-                <strong>Photo taken:</strong>
-                {{ selected.photo_taken_at
-                  ? (selected.photo_taken_at | date: 'medium')
-                  : 'Time not recorded' }}
-              </p>
-
-              <p>
-                <strong>Coordinates:</strong>
-                {{ formatCoords(selected.latitude, selected.longitude) }}
-              </p>
-            </div>
-
-            <div class="map-container">
-              <app-location-map
-                [problemLat]="selected.latitude"
-                [problemLng]="selected.longitude"
+              <img
+                class="report-photo"
+                [src]="'data:image/jpeg;base64,' + selected.before_photo"
+                alt="Before photo"
               />
             </div>
           </section>
 
-          <!-- STAFF PROOF -->
-          @if (selected.after_photo) {
-            <section class="content-card">
+          <!-- 03 Location -->
+          <section class="section-block">
+            <div class="card">
               <div class="card-heading">
-                <div class="heading-icon">04</div>
+                <div class="heading-icon">03</div>
                 <div>
-                  <h2>Staff Completion Proof</h2>
-                  <p>Photo evidence submitted by the assigned staff member.</p>
+                  <h2>Problem Location</h2>
+                  <p>Location information recorded with the report.</p>
                 </div>
-              </div>
-
-              @if (selected.assigned_name) {
-                <p class="proof-submitted">
-                  Submitted by <strong>{{ selected.assigned_name }}</strong>
-                </p>
-              }
-
-              <div class="description-box">
-                <span>Staff remarks</span>
-                <p>{{ selected.proof_note || 'No note provided.' }}</p>
               </div>
 
               <div class="location-information">
                 <p>
                   <strong>Photo taken:</strong>
-                  {{ selected.after_photo_taken_at
-                    ? (selected.after_photo_taken_at | date: 'medium')
+                  {{ selected.photo_taken_at
+                    ? (selected.photo_taken_at | date: 'medium')
                     : 'Time not recorded' }}
                 </p>
 
                 <p>
                   <strong>Coordinates:</strong>
-                  {{ formatCoords(selected.after_latitude, selected.after_longitude) }}
+                  {{ formatCoords(selected.latitude, selected.longitude) }}
                 </p>
               </div>
 
-              <img
-                class="report-photo"
-                [src]="'data:image/jpeg;base64,' + selected.after_photo"
-                alt="After photo submitted by staff"
-              />
+              <div class="map-container">
+                <app-location-map
+                  [problemLat]="selected.latitude"
+                  [problemLng]="selected.longitude"
+                />
+              </div>
+            </div>
+          </section>
+
+          <!-- 04 Staff proof -->
+          @if (selected.after_photo) {
+            <section class="section-block">
+              <div class="card">
+                <div class="card-heading">
+                  <div class="heading-icon">04</div>
+                  <div>
+                    <h2>Staff Completion Proof</h2>
+                    <p>Photo evidence submitted by the assigned staff member.</p>
+                  </div>
+                </div>
+
+                @if (selected.assigned_name) {
+                  <p class="proof-submitted">
+                    Submitted by <strong>{{ selected.assigned_name }}</strong>
+                  </p>
+                }
+
+                <div class="description-box">
+                  <span>Staff remarks</span>
+                  <p>{{ selected.proof_note || 'No note provided.' }}</p>
+                </div>
+
+                <div class="location-information">
+                  <p>
+                    <strong>Photo taken:</strong>
+                    {{ selected.after_photo_taken_at
+                      ? (selected.after_photo_taken_at | date: 'medium')
+                      : 'Time not recorded' }}
+                  </p>
+
+                  <p>
+                    <strong>Coordinates:</strong>
+                    {{ formatCoords(selected.after_latitude, selected.after_longitude) }}
+                  </p>
+                </div>
+
+                <img
+                  class="report-photo"
+                  [src]="'data:image/jpeg;base64,' + selected.after_photo"
+                  alt="After photo submitted by staff"
+                />
+              </div>
             </section>
           }
 
-          <!-- APPROVE OR SEND BACK -->
+          <!-- 05 Action (only one of these shows, depending on status) -->
+
+          <!-- Approve or send back -->
           @if (canComplete) {
-            <section class="content-card action-card">
-              <div class="card-heading">
-                <div class="heading-icon">05</div>
-                <div>
-                  <h2>Review Completion Proof</h2>
-                  <p>Approve the submitted proof or return it for corrections.</p>
-                </div>
-              </div>
-
-              <div class="description-box">
-                <span>Completion remark (optional)</span>
-                <ion-item class="custom-input" lines="none">
-                  <ion-textarea
-                    [autoGrow]="true"
-                    maxlength="300"
-                    placeholder="For example: Checked and verified."
-                    [(ngModel)]="form.remark"
-                  ></ion-textarea>
-                </ion-item>
-              </div>
-
-              <ion-button
-                expand="block"
-                class="primary-action"
-                [disabled]="busy"
-                (click)="confirmComplete()"
-              >
-                {{ busy ? 'Saving...' : '✓ Mark as Completed' }}
-              </ion-button>
-
-              <div class="action-divider"></div>
-
-              <div class="description-box">
-                <span>Reason for sending back</span>
-                <ion-item class="custom-input" lines="none">
-                  <ion-textarea
-                    [autoGrow]="true"
-                    maxlength="300"
-                    placeholder="Explain what needs to be corrected."
-                    [(ngModel)]="rejectRemark"
-                  ></ion-textarea>
-                </ion-item>
-              </div>
-
-              <ion-button
-                expand="block"
-                fill="outline"
-                class="send-back-action"
-                [disabled]="busy"
-                (click)="confirmSendBack()"
-              >
-                Send Back to Staff
-              </ion-button>
-            </section>
-          }
-
-          <!-- PAUSE: a job in progress, only when a more urgent job is queued for the same staff member -->
-          @if (selected.status === 'in_progress') {
-            <section class="content-card action-card">
-              <div class="card-heading">
-                <div class="heading-icon">05</div>
-                <div>
-                  <h2>Pause This Job</h2>
-                  <p>Use this when the staff member must do a more urgent job first. The server only allows it when a higher-priority job is already in their queue.</p>
-                </div>
-              </div>
-
-              <div class="description-box">
-                <span>Reason for pausing</span>
-                <ion-item class="custom-input" lines="none">
-                  <ion-textarea
-                    [autoGrow]="true"
-                    maxlength="300"
-                    placeholder="For example: urgent leak in the library."
-                    [(ngModel)]="pauseRemark"
-                  ></ion-textarea>
-                </ion-item>
-              </div>
-
-              <ion-button
-                expand="block"
-                fill="outline"
-                class="send-back-action"
-                [disabled]="busy"
-                (click)="confirmPause()"
-              >
-                Pause Job
-              </ion-button>
-            </section>
-          }
-
-          <!-- PAUSED: the admin can only cancel it. The staff member resumes it. -->
-          @if (selected.status === 'paused') {
-            <section class="content-card action-card">
-              <div class="card-heading">
-                <div class="heading-icon">05</div>
-                <div>
-                  <h2>Paused Job</h2>
-                  <p>The staff member will resume it when they are free. You can cancel it if it is no longer needed.</p>
-                </div>
-              </div>
-
-              <ion-button
-                expand="block"
-                fill="outline"
-                class="cancel-action"
-                [disabled]="busy"
-                (click)="confirmCancel()"
-              >
-                Cancel Request
-              </ion-button>
-            </section>
-          }
-
-          <!-- ASSIGNMENT -->
-          @if (canChange) {
-            <section class="content-card action-card">
-              <div class="card-heading">
-                <div class="heading-icon">05</div>
-                <div>
-                  <h2>Assign Request</h2>
-                  <p>Choose the department, staff member, and priority.</p>
-                </div>
-              </div>
-
-              <div class="assignment-fields">
-
-                <div class="assignment-field">
-                  <label>Department</label>
-                  <ion-item class="custom-input" lines="none">
-                    <ion-select
-                      placeholder="Select department"
-                      interface="popover"
-                      [ngModel]="form.department_id"
-                      (ionChange)="setDepartment($event.detail.value)"
-                    >
-                      @for (d of departments; track d.id) {
-                        <ion-select-option [value]="d.id">
-                          {{ d.name }}
-                        </ion-select-option>
-                      }
-                    </ion-select>
-                  </ion-item>
+            <section class="section-block">
+              <div class="card action-card">
+                <div class="card-heading">
+                  <div class="heading-icon">05</div>
+                  <div>
+                    <h2>Review Completion Proof</h2>
+                    <p>Approve the submitted proof or return it for corrections.</p>
+                  </div>
                 </div>
 
-                <div class="assignment-field">
-                  <label>Staff Member</label>
-                  <ion-item class="custom-input" lines="none">
-                    <ion-select
-                      placeholder="Select staff member"
-                      interface="popover"
-                      [disabled]="!form.department_id"
-                      [(ngModel)]="form.staff_id"
-                    >
-                      @for (s of staffForDepartment(); track s.id) {
-                        <ion-select-option
-                          [value]="s.id"
-                          [disabled]="staffDisabled(s)"
-                        >
-                          {{ s.name }} ({{ staffLabel(s) }})
-                        </ion-select-option>
-                      } @empty {
-                        <ion-select-option [value]="null" disabled>
-                          No staff in this department
-                        </ion-select-option>
-                      }
-                    </ion-select>
-                  </ion-item>
-                </div>
-
-                <div class="assignment-field">
-                  <label>Priority Level</label>
-                  <ion-item class="custom-input" lines="none">
-                    <ion-select
-                      placeholder="Choose priority"
-                      interface="popover"
-                      [(ngModel)]="form.priority"
-                    >
-                      @for (p of priorityChoices; track p.value) {
-                        <ion-select-option [value]="p.value">
-                          {{ p.label }}
-                        </ion-select-option>
-                      }
-                    </ion-select>
-                  </ion-item>
-                </div>
-
-                <div class="assignment-field">
-                  <label>Remark (Optional)</label>
+                <div class="description-box">
+                  <span>Completion remark (optional)</span>
                   <ion-item class="custom-input" lines="none">
                     <ion-textarea
                       [autoGrow]="true"
                       maxlength="300"
-                      placeholder="Add instructions for the assigned staff."
+                      placeholder="For example: Checked and verified."
                       [(ngModel)]="form.remark"
                     ></ion-textarea>
                   </ion-item>
                 </div>
 
+                <ion-button
+                  expand="block"
+                  class="primary-action"
+                  [disabled]="busy"
+                  (click)="confirmComplete()"
+                >
+                  {{ busy ? 'Saving...' : '✓ Mark as Completed' }}
+                </ion-button>
+
+                <div class="action-divider"></div>
+
+                <div class="description-box">
+                  <span>Reason for sending back</span>
+                  <ion-item class="custom-input" lines="none">
+                    <ion-textarea
+                      [autoGrow]="true"
+                      maxlength="300"
+                      placeholder="Explain what needs to be corrected."
+                      [(ngModel)]="rejectRemark"
+                    ></ion-textarea>
+                  </ion-item>
+                </div>
+
+                <ion-button
+                  expand="block"
+                  fill="outline"
+                  class="send-back-action"
+                  [disabled]="busy"
+                  (click)="confirmSendBack()"
+                >
+                  Send Back to Staff
+                </ion-button>
               </div>
-
-              <ion-button
-                expand="block"
-                class="primary-action"
-                [disabled]="busy || !form.department_id || !form.staff_id || !form.priority"
-                (click)="submitAssign()"
-              >
-                {{ busy ? 'Saving...' : (selected.status === 'assigned' ? 'Reassign Request' : 'Assign Request') }}
-              </ion-button>
-
-              <ion-button
-                expand="block"
-                fill="outline"
-                class="cancel-action"
-                [disabled]="busy"
-                (click)="confirmCancel()"
-              >
-                Cancel Request
-              </ion-button>
             </section>
           }
 
-          <!-- HISTORY -->
-          <section class="content-card">
-            <div class="card-heading">
-              <div class="heading-icon">06</div>
-              <div>
-                <h2>Request History</h2>
-                <p>Track the progress and status changes of this request.</p>
-              </div>
-            </div>
-
-            @if (selected.events.length > 0) {
-              <div class="history-list">
-                @for (e of selected.events; track $index) {
-                  <div class="history-item">
-                    <div class="history-marker"></div>
-
-                    <div class="history-content">
-                      <div class="history-title">
-                        <strong>{{ statusLabel(e.status) }}</strong>
-                        <ion-badge [color]="statusColor(e.status)">
-                          {{ statusLabel(e.status) }}
-                        </ion-badge>
-                      </div>
-
-                      @if (e.remark) {
-                        <p>{{ e.remark }}</p>
-                      }
-
-                      <span>
-                        {{ e.changed_by_name }} ·
-                        {{ e.changed_at | date: 'medium' }}
-                      </span>
-                    </div>
+          <!-- Pause a job in progress -->
+          @if (selected.status === 'in_progress') {
+            <section class="section-block">
+              <div class="card action-card">
+                <div class="card-heading">
+                  <div class="heading-icon">05</div>
+                  <div>
+                    <h2>Pause This Job</h2>
+                    <p>Use this when the staff member must do a more urgent job first. The server only allows it when a higher-priority job is already in their queue.</p>
                   </div>
-                }
+                </div>
+
+                <div class="description-box">
+                  <span>Reason for pausing</span>
+                  <ion-item class="custom-input" lines="none">
+                    <ion-textarea
+                      [autoGrow]="true"
+                      maxlength="300"
+                      placeholder="For example: urgent leak in the library."
+                      [(ngModel)]="pauseRemark"
+                    ></ion-textarea>
+                  </ion-item>
+                </div>
+
+                <ion-button
+                  expand="block"
+                  fill="outline"
+                  class="send-back-action"
+                  [disabled]="busy"
+                  (click)="confirmPause()"
+                >
+                  Pause Job
+                </ion-button>
               </div>
-            } @else {
-              <p class="no-history">No history available yet.</p>
-            }
+            </section>
+          }
+
+          <!-- Paused: admin can only cancel -->
+          @if (selected.status === 'paused') {
+            <section class="section-block">
+              <div class="card action-card">
+                <div class="card-heading">
+                  <div class="heading-icon">05</div>
+                  <div>
+                    <h2>Paused Job</h2>
+                    <p>The staff member will resume it when they are free. You can cancel it if it is no longer needed.</p>
+                  </div>
+                </div>
+
+                <ion-button
+                  expand="block"
+                  fill="outline"
+                  class="cancel-action"
+                  [disabled]="busy"
+                  (click)="confirmCancel()"
+                >
+                  Cancel Request
+                </ion-button>
+              </div>
+            </section>
+          }
+
+          <!-- Assign -->
+          @if (canChange) {
+            <section class="section-block">
+              <div class="card action-card">
+                <div class="card-heading">
+                  <div class="heading-icon">05</div>
+                  <div>
+                    <h2>Assign Request</h2>
+                    <p>Choose the department, staff member and priority.</p>
+                  </div>
+                </div>
+
+                <div class="assignment-fields">
+
+                  <div class="assignment-field">
+                    <label>Department</label>
+                    <ion-item class="custom-input" lines="none">
+                      <ion-select
+                        placeholder="Select department"
+                        interface="popover"
+                        [ngModel]="form.department_id"
+                        (ionChange)="setDepartment($event.detail.value)"
+                      >
+                        @for (d of departments; track d.id) {
+                          <ion-select-option [value]="d.id">{{ d.name }}</ion-select-option>
+                        }
+                      </ion-select>
+                    </ion-item>
+                  </div>
+
+                  <div class="assignment-field">
+                    <label>Staff Member</label>
+                    <ion-item class="custom-input" lines="none">
+                      <ion-select
+                        placeholder="Select staff member"
+                        interface="popover"
+                        [disabled]="!form.department_id"
+                        [(ngModel)]="form.staff_id"
+                      >
+                        @for (s of staffForDepartment(); track s.id) {
+                          <ion-select-option [value]="s.id" [disabled]="staffDisabled(s)">
+                            {{ s.name }} ({{ staffLabel(s) }})
+                          </ion-select-option>
+                        } @empty {
+                          <ion-select-option [value]="null" disabled>
+                            No staff in this department
+                          </ion-select-option>
+                        }
+                      </ion-select>
+                    </ion-item>
+                  </div>
+
+                  <div class="assignment-field">
+                    <label>Priority Level</label>
+                    <ion-item class="custom-input" lines="none">
+                      <ion-select
+                        placeholder="Choose priority"
+                        interface="popover"
+                        [(ngModel)]="form.priority"
+                      >
+                        @for (p of priorityChoices; track p.value) {
+                          <ion-select-option [value]="p.value">{{ p.label }}</ion-select-option>
+                        }
+                      </ion-select>
+                    </ion-item>
+                  </div>
+
+                  <div class="assignment-field">
+                    <label>Remark (Optional)</label>
+                    <ion-item class="custom-input" lines="none">
+                      <ion-textarea
+                        [autoGrow]="true"
+                        maxlength="300"
+                        placeholder="Add instructions for the assigned staff."
+                        [(ngModel)]="form.remark"
+                      ></ion-textarea>
+                    </ion-item>
+                  </div>
+
+                </div>
+
+                <ion-button
+                  expand="block"
+                  class="primary-action"
+                  [disabled]="busy || !form.department_id || !form.staff_id || !form.priority"
+                  (click)="submitAssign()"
+                >
+                  {{ busy ? 'Saving...' : (selected.status === 'assigned' ? 'Reassign Request' : 'Assign Request') }}
+                </ion-button>
+
+                <ion-button
+                  expand="block"
+                  fill="outline"
+                  class="cancel-action"
+                  [disabled]="busy"
+                  (click)="confirmCancel()"
+                >
+                  Cancel Request
+                </ion-button>
+              </div>
+            </section>
+          }
+
+          <!-- 06 History -->
+          <section class="section-block">
+            <div class="card">
+              <div class="card-heading">
+                <div class="heading-icon">06</div>
+                <div>
+                  <h2>Request History</h2>
+                  <p>Track the progress and status changes of this request.</p>
+                </div>
+              </div>
+
+              @if (selected.events.length > 0) {
+                <div class="history-list">
+                  @for (e of selected.events; track $index) {
+                    <div class="history-item">
+                      <div class="history-marker"></div>
+
+                      <div class="history-content">
+                        <div class="history-title">
+                          <strong>{{ statusLabel(e.status) }}</strong>
+                          <ion-badge [color]="statusColor(e.status)">
+                            {{ statusLabel(e.status) }}
+                          </ion-badge>
+                        </div>
+
+                        @if (e.remark) {
+                          <p>{{ e.remark }}</p>
+                        }
+
+                        <span>{{ e.changed_by_name }} · {{ e.changed_at | date: 'medium' }}</span>
+                      </div>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <p class="no-history">No history available yet.</p>
+              }
+            </div>
           </section>
 
         }
 
-      </div>
+        <!-- Footer -->
+        <footer class="dashboard-footer">
+          <span>Campus Reports</span>
+          <span>Admin · Manage Reports</span>
+        </footer>
+
+      </main>
     </ion-content>
   `,
   styles: [`
+
+    /* =====================================
+       GLOBAL DASHBOARD
+    ===================================== */
+
     :host {
-      --deep-purple: #56318F;
-      --royal-purple: #7651B5;
-      --soft-lavender: #B99AE8;
-      --pale-lavender: #EDE4FA;
-      --off-white: #FAF8FD;
       display: block;
+      --purple-primary: #56318f;
+      --purple-secondary: #7651b5;
+      --purple-light: #b99ae8;
+      --lavender: #ede4fa;
+      --background-color: #faf8fd;
+      --text-dark: #302344;
+      --text-muted: #8c829b;
+      --border-color: #eee8f5;
+      --card-background: #ffffff;
+
+      /* Keep the page light with dark purple text, whatever the phone's dark mode setting is. */
+      --ion-background-color: #faf8fd;
+      --ion-background-color-rgb: 250, 248, 253;
+      --ion-text-color: #302344;
+      --ion-text-color-rgb: 48, 35, 68;
+      --ion-item-background: #ffffff;
+      --ion-item-color: #302344;
+      --ion-toolbar-background: #ffffff;
+      --ion-toolbar-color: #302344;
+      --ion-card-background: #ffffff;
+      --ion-card-color: #302344;
     }
 
-    /* PAGE */
-
-    .page-content {
-      --background: #FAF8FD;
+    .dashboard-content {
+      --background: var(--background-color);
+      --color: var(--text-dark);
     }
 
-    .page-toolbar {
-      --background: #FAF8FD;
-      --color: #30233F;
-      --border-color: #E7DFEF;
-      border-bottom: 1px solid #E7DFEF;
+    .dashboard-container {
+      width: 100%;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 32px 42px;
+      box-sizing: border-box;
+    }
+
+    /* =====================================
+       TOP NAVIGATION
+    ===================================== */
+
+    .top-toolbar {
+      --background: #ffffff;
+      --color: var(--text-dark);
+      --min-height: 76px;
+      --padding-start: 28px;
+      --padding-end: 28px;
+      border-bottom: 1px solid var(--border-color);
     }
 
     ion-title {
-      font-size: 17px;
-      font-weight: 750;
-      color: #56318F;
+      font-weight: 700;
+      color: var(--text-dark);
     }
 
-    .back-button,
-    .refresh-button {
-      --color: #7651B5;
+    ion-button {
+      --color: var(--purple-primary);
+      --border-radius: 10px;
       font-weight: 650;
       text-transform: none;
     }
 
-    .page-wrapper {
-      width: 100%;
-      max-width: 1050px;
-      margin: 0 auto;
-      padding: 28px 24px 50px;
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
 
-    /* HEADINGS */
-
-    .page-heading,
-    .detail-heading {
+    .brand-icon {
+      width: 42px;
+      height: 42px;
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      gap: 20px;
-      margin-bottom: 32px;
+      justify-content: center;
+      border-radius: 13px;
+      background: var(--purple-primary);
+      color: white;
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      transition: transform .25s ease, box-shadow .25s ease;
+    }
+
+    .brand-icon:hover {
+      transform: rotate(-7deg) scale(1.08);
+      box-shadow: 0 5px 14px rgba(86,49,143,.25);
+    }
+
+    .brand-info {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .brand-info strong {
+      color: var(--text-dark);
+      font-size: 16px;
+      font-weight: 750;
+    }
+
+    .brand-info span {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* =====================================
+       WELCOME BANNER
+    ===================================== */
+
+    .welcome-section {
+      min-height: 220px;
+      padding: 36px 42px;
+      box-sizing: border-box;
+      border-radius: 22px;
+      background: linear-gradient(120deg, #56318f 0%, #7651b5 60%, #8c6ac5 100%);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+      color: white;
+      box-shadow: 0 12px 30px rgba(86, 49, 143, 0.16);
+      transition: transform .25s ease, box-shadow .25s ease;
+    }
+
+    .welcome-section:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 16px 35px rgba(86,49,143,.22);
+    }
+
+    .welcome-text {
+      position: relative;
+      z-index: 2;
+      max-width: 650px;
     }
 
     .eyebrow {
-      color: #7651B5;
+      display: block;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 1.6px;
+      margin-bottom: 12px;
+      color: #bfa8e9;
+    }
+
+    .welcome-section .eyebrow {
+      color: #dfd0f7;
+    }
+
+    .welcome-section h1 {
+      font-size: clamp(25px, 3vw, 35px);
+      font-weight: 750;
+      margin: 0 0 12px;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+    }
+
+    .welcome-section h1 span {
+      color: #d8c3ff;
+    }
+
+    .welcome-section p {
+      font-size: 13px;
+      line-height: 1.8;
+      color: #e8def6;
+      max-width: 510px;
+      margin: 0 0 20px;
+    }
+
+    .welcome-role {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
       font-size: 11px;
-      font-weight: 800;
-      letter-spacing: 1.8px;
+      font-weight: 650;
+      background: rgba(255,255,255,0.13);
+      padding: 8px 14px;
+      border-radius: 30px;
+      transition: background .2s ease, transform .2s ease;
     }
 
-    .page-heading h1,
-    .detail-heading h1 {
-      margin: 9px 0;
-      color: #30233F;
-      font-size: 30px;
-      font-weight: 800;
-      letter-spacing: -0.8px;
+    .welcome-role:hover {
+      background: rgba(255,255,255,.22);
+      transform: translateX(4px);
     }
 
-    .page-heading p,
-    .detail-heading p {
-      margin: 0;
-      color: #82798D;
-      font-size: 14px;
-      line-height: 1.6;
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      background: #d8c3ff;
+      border-radius: 50%;
+      animation: status-pulse 2s infinite;
     }
 
-    .queue-counter {
+    .welcome-illustration {
+      width: 180px;
+      height: 160px;
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
-      min-width: 120px;
-      padding: 15px 20px;
-      border: 1px solid #E7DFEF;
-      border-radius: 15px;
-      background: white;
+      flex-shrink: 0;
     }
 
-    .counter-number {
-      color: #56318F;
-      font-size: 28px;
-      font-weight: 800;
+    .illustration-circle {
+      width: 135px;
+      height: 135px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.23);
+      background: rgba(255,255,255,0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      transition: transform .35s ease, background .35s ease;
     }
 
-    .counter-label {
-      color: #82798D;
-      font-size: 11px;
+    .welcome-section:hover .illustration-circle {
+      transform: rotate(8deg) scale(1.06);
+      background: rgba(255,255,255,.13);
+    }
+
+    .illustration-shield {
+      width: 72px;
+      height: 82px;
+      border: 3px solid rgba(255,255,255,0.6);
+      clip-path: polygon(50% 0%, 100% 20%, 90% 75%, 50% 100%, 10% 75%, 0% 20%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      font-weight: 700;
+      color: white;
+      transition: transform .3s ease;
+    }
+
+    .welcome-section:hover .illustration-shield {
+      transform: scale(1.1);
+    }
+
+    .illustration-icon {
+      position: absolute;
+      top: 2px;
+      right: 10px;
+      font-size: 25px;
+      color: #e6d5ff;
+      transition: transform .3s ease;
+    }
+
+    .welcome-section:hover .illustration-icon {
+      transform: rotate(35deg) scale(1.2);
+    }
+
+    /* =====================================
+       SECTIONS
+    ===================================== */
+
+    .section-block {
+      margin-top: 38px;
     }
 
     .section-heading {
-      margin-bottom: 16px;
+      margin-bottom: 20px;
+    }
+
+    .section-heading .eyebrow {
+      color: var(--purple-secondary);
+      margin-bottom: 7px;
     }
 
     .section-heading h2 {
       margin: 0 0 5px;
-      color: #30233F;
-      font-size: 19px;
+      font-size: 21px;
+      color: var(--text-dark);
       font-weight: 750;
     }
 
     .section-heading p {
       margin: 0;
-      color: #93899E;
-      font-size: 13px;
+      font-size: 12px;
+      color: var(--text-muted);
     }
 
-    /* REQUEST QUEUE */
+    /* =====================================
+       REQUEST QUEUE
+    ===================================== */
 
     .request-list {
       display: flex;
@@ -773,18 +966,25 @@ interface AssignForm {
     .request-card {
       width: 100%;
       padding: 19px;
-      border: 1px solid #E7DFEF;
-      border-radius: 15px;
-      background: white;
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      background: var(--card-background);
       text-align: left;
       cursor: pointer;
-      transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+      font-family: inherit;
+      box-shadow: 0 6px 18px rgba(86, 49, 143, 0.07);
+      transition: transform .22s ease, border-color .22s ease, box-shadow .22s ease;
     }
 
     .request-card:hover {
-      transform: translateY(-2px);
-      border-color: #B99AE8;
-      box-shadow: 0 8px 22px rgba(86,49,143,0.09);
+      transform: translateY(-3px);
+      border-color: var(--purple-light);
+      box-shadow: 0 10px 24px rgba(86,49,143,.13);
+    }
+
+    .request-card:focus-visible {
+      outline: 3px solid rgba(118,81,181,.4);
+      outline-offset: 3px;
     }
 
     .request-card-main {
@@ -800,10 +1000,15 @@ interface AssignForm {
       width: 48px;
       height: 48px;
       border-radius: 13px;
-      background: #EDE4FA;
-      color: #56318F;
+      background: var(--lavender);
+      color: var(--purple-primary);
       font-size: 13px;
       font-weight: 800;
+      transition: transform .25s ease;
+    }
+
+    .request-card:hover .request-icon {
+      transform: rotate(-7deg) scale(1.08);
     }
 
     .request-information {
@@ -820,31 +1025,36 @@ interface AssignForm {
 
     .request-information h3 {
       margin: 0;
-      color: #30233F;
+      color: var(--text-dark);
       font-size: 16px;
       font-weight: 750;
+      transition: color .2s ease;
+    }
+
+    .request-card:hover .request-information h3 {
+      color: var(--purple-primary);
     }
 
     .request-id {
-      color: #9A8BAE;
+      color: var(--text-muted);
       font-size: 11px;
     }
 
     .request-category {
       margin: 6px 0;
-      color: #7651B5;
+      color: var(--purple-secondary);
       font-size: 12px;
       font-weight: 650;
     }
 
     .request-assignment {
       margin: 4px 0 0;
-      color: #93899E;
+      color: var(--text-muted);
       font-size: 12px;
     }
 
     .request-assignment strong {
-      color: #51435F;
+      color: var(--text-dark);
     }
 
     .request-card-side {
@@ -856,12 +1066,14 @@ interface AssignForm {
     }
 
     .view-details {
-      color: #7651B5;
+      color: var(--purple-secondary);
       font-size: 11px;
       font-weight: 700;
     }
 
-    /* EMPTY AND LOADING */
+    /* =====================================
+       EMPTY AND LOADING
+    ===================================== */
 
     .empty-card,
     .loading-card {
@@ -869,11 +1081,13 @@ interface AssignForm {
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 55px 20px;
-      border: 1px solid #E7DFEF;
+      padding: 45px 20px;
+      background: var(--card-background);
+      border: 1px solid var(--border-color);
       border-radius: 16px;
-      background: white;
       text-align: center;
+      color: var(--text-muted);
+      box-shadow: 0 6px 18px rgba(86, 49, 143, 0.07);
     }
 
     .empty-icon {
@@ -883,43 +1097,55 @@ interface AssignForm {
       height: 55px;
       margin-bottom: 14px;
       border-radius: 50%;
-      background: #EDE4FA;
-      color: #56318F;
+      background: var(--lavender);
+      color: var(--purple-primary);
       font-size: 25px;
       font-weight: 800;
     }
 
     .empty-card h3 {
       margin: 0 0 8px;
-      color: #30233F;
+      color: var(--text-dark);
       font-size: 18px;
     }
 
     .empty-card p,
     .loading-card p {
-      color: #93899E;
+      color: var(--text-muted);
       font-size: 13px;
     }
 
     .loading-card ion-spinner {
-      color: #7651B5;
+      color: var(--purple-primary);
     }
 
     .empty-refresh {
-      --color: #7651B5;
-      --border-color: #B99AE8;
+      --color: var(--purple-secondary);
+      --border-color: var(--purple-light);
       text-transform: none;
     }
 
-    /* DETAIL CARDS */
+    /* =====================================
+       DETAIL CARDS
+    ===================================== */
 
-    .content-card {
-      margin-bottom: 19px;
-      padding: 22px;
-      border: 1px solid #E7DFEF;
+    .card {
+      background: var(--card-background);
+      border: 1px solid var(--border-color);
       border-radius: 16px;
-      background: white;
-      box-shadow: 0 4px 15px rgba(86,49,143,0.035);
+      padding: 22px;
+      color: var(--text-dark);
+      box-shadow: 0 6px 18px rgba(86, 49, 143, 0.07);
+      transition: transform .2s ease, box-shadow .2s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 24px rgba(86, 49, 143, 0.12);
+    }
+
+    .action-card {
+      border-top: 3px solid var(--purple-secondary);
     }
 
     .card-heading {
@@ -933,26 +1159,27 @@ interface AssignForm {
       display: grid;
       place-items: center;
       flex-shrink: 0;
-      width: 38px;
-      height: 38px;
-      border-radius: 11px;
-      background: #EDE4FA;
-      color: #56318F;
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: var(--lavender);
+      color: var(--purple-primary);
       font-size: 12px;
       font-weight: 800;
     }
 
     .card-heading h2 {
       margin: 0 0 4px;
-      color: #30233F;
+      color: var(--purple-primary);
       font-size: 17px;
       font-weight: 750;
     }
 
     .card-heading p {
       margin: 0;
-      color: #93899E;
+      color: var(--text-muted);
       font-size: 12px;
+      line-height: 1.5;
     }
 
     .information-grid {
@@ -970,13 +1197,15 @@ interface AssignForm {
 
     .information-item span,
     .description-box > span {
-      color: #93899E;
+      color: var(--purple-secondary);
       font-size: 11px;
-      font-weight: 650;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
     }
 
     .information-item strong {
-      color: #41364F;
+      color: var(--text-dark);
       font-size: 13px;
       overflow-wrap: anywhere;
     }
@@ -989,8 +1218,8 @@ interface AssignForm {
       margin: 8px 0 0;
       padding: 13px;
       border-radius: 10px;
-      background: #FAF8FD;
-      color: #51435F;
+      background: var(--background-color);
+      color: var(--text-dark);
       font-size: 13px;
       line-height: 1.7;
       white-space: pre-wrap;
@@ -1004,51 +1233,49 @@ interface AssignForm {
       width: 100%;
       max-height: 480px;
       object-fit: contain;
-      border: 1px solid #E7DFEF;
+      border: 1px solid var(--border-color);
       border-radius: 13px;
-      background: #FAF8FD;
+      background: var(--background-color);
     }
 
     .location-information {
       margin-bottom: 15px;
       padding: 13px;
       border-radius: 10px;
-      background: #FAF8FD;
+      background: var(--background-color);
     }
 
     .location-information p {
       margin: 5px 0;
-      color: #82798D;
+      color: var(--text-muted);
       font-size: 12px;
       line-height: 1.6;
       overflow-wrap: anywhere;
     }
 
     .location-information strong {
-      color: #41364F;
+      color: var(--text-dark);
     }
 
     .map-container {
       overflow: hidden;
-      border: 1px solid #E7DFEF;
+      border: 1px solid var(--border-color);
       border-radius: 12px;
     }
 
     .proof-submitted {
       margin: 0 0 12px;
-      color: #82798D;
+      color: var(--text-muted);
       font-size: 13px;
     }
 
     .proof-submitted strong {
-      color: #56318F;
+      color: var(--purple-primary);
     }
 
-    /* ASSIGNMENT AND ACTIONS */
-
-    .action-card {
-      border-top: 3px solid #7651B5;
-    }
+    /* =====================================
+       FORM FIELDS AND BUTTONS
+    ===================================== */
 
     .assignment-fields {
       display: flex;
@@ -1059,40 +1286,43 @@ interface AssignForm {
     .assignment-field label {
       display: block;
       margin-bottom: 8px;
-      color: #51435F;
-      font-size: 12px;
+      color: var(--purple-secondary);
+      font-size: 11px;
       font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
     }
 
     .custom-input {
-      --background: #FAF8FD;
-      --color: #41364F;
+      --background: var(--background-color);
+      --color: var(--text-dark);
       --border-radius: 10px;
       --padding-start: 12px;
       --padding-end: 12px;
-      border: 1px solid #E7DFEF;
+      border: 1px solid var(--border-color);
       border-radius: 10px;
     }
 
     .custom-input:focus-within {
-      border-color: #9671CC;
-      box-shadow: 0 0 0 3px rgba(118,81,181,0.08);
+      border-color: var(--purple-secondary);
+      box-shadow: 0 0 0 3px rgba(118,81,181,0.1);
     }
 
     ion-select,
     ion-textarea {
-      --color: #41364F;
-      --placeholder-color: #A69CAF;
+      --color: var(--text-dark);
+      --placeholder-color: #a69caf;
       font-size: 13px;
     }
 
     .primary-action {
       height: 48px;
       margin-top: 22px;
-      --background: #56318F;
-      --background-hover: #7651B5;
+      --background: var(--purple-primary);
+      --background-hover: var(--purple-secondary);
       --background-activated: #452575;
-      --border-radius: 11px;
+      --color: #ffffff;
+      --border-radius: 12px;
       --box-shadow: 0 5px 13px rgba(86,49,143,0.15);
       font-size: 13px;
       font-weight: 700;
@@ -1102,9 +1332,9 @@ interface AssignForm {
     .send-back-action {
       height: 45px;
       margin-top: 14px;
-      --color: #7651B5;
-      --border-color: #B99AE8;
-      --border-radius: 11px;
+      --color: var(--purple-secondary);
+      --border-color: var(--purple-light);
+      --border-radius: 12px;
       font-size: 13px;
       font-weight: 700;
       text-transform: none;
@@ -1113,9 +1343,9 @@ interface AssignForm {
     .cancel-action {
       height: 45px;
       margin-top: 12px;
-      --color: #C34C5A;
-      --border-color: #E6B8BF;
-      --border-radius: 11px;
+      --color: #c34c5a;
+      --border-color: #e6b8bf;
+      --border-radius: 12px;
       font-size: 13px;
       font-weight: 700;
       text-transform: none;
@@ -1124,15 +1354,16 @@ interface AssignForm {
     .action-divider {
       height: 1px;
       margin: 24px 0;
-      background: #EDE4FA;
+      background: var(--lavender);
     }
 
-    /* HISTORY */
+    /* =====================================
+       HISTORY
+    ===================================== */
 
     .history-list {
       display: flex;
       flex-direction: column;
-      gap: 0;
     }
 
     .history-item {
@@ -1148,7 +1379,7 @@ interface AssignForm {
       bottom: -1px;
       left: 6px;
       width: 2px;
-      background: #E7DFEF;
+      background: var(--border-color);
       content: '';
     }
 
@@ -1159,9 +1390,9 @@ interface AssignForm {
       width: 14px;
       height: 14px;
       margin-top: 3px;
-      border: 3px solid #B99AE8;
+      border: 3px solid var(--purple-light);
       border-radius: 50%;
-      background: white;
+      background: #ffffff;
     }
 
     .history-content {
@@ -1178,37 +1409,133 @@ interface AssignForm {
     }
 
     .history-title strong {
-      color: #41364F;
+      color: var(--text-dark);
       font-size: 13px;
     }
 
     .history-content > p {
       margin: 7px 0;
-      color: #82798D;
+      color: var(--text-muted);
       font-size: 12px;
       line-height: 1.6;
       overflow-wrap: anywhere;
     }
 
     .history-content > span {
-      color: #A69CAF;
+      color: var(--text-muted);
       font-size: 11px;
     }
 
     .no-history {
-      color: #93899E;
+      color: var(--text-muted);
       font-size: 13px;
     }
 
-    /* RESPONSIVE */
+    /* =====================================
+       FOOTER
+    ===================================== */
 
-    @media (max-width: 760px) {
-      .page-wrapper {
-        padding: 22px 16px 40px;
+    .dashboard-footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 25px 0 10px;
+      margin-top: 35px;
+      border-top: 1px solid var(--border-color);
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* =====================================
+       ANIMATIONS
+    ===================================== */
+
+    @keyframes status-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(216,195,255,.6); }
+      50% { box-shadow: 0 0 0 5px rgba(216,195,255,0); }
+    }
+
+    /* =====================================
+       RESPONSIVENESS
+    ===================================== */
+
+    @media (max-width: 900px) {
+      .dashboard-container {
+        padding: 28px 24px;
       }
 
+      .welcome-section {
+        padding: 30px;
+      }
+
+      .welcome-illustration {
+        width: 130px;
+      }
+    }
+
+    @media (max-width: 760px) {
       .information-grid {
         grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 600px) {
+      .dashboard-container {
+        padding: 20px 15px;
+      }
+
+      .top-toolbar {
+        --min-height: 65px;
+        --padding-start: 15px;
+        --padding-end: 12px;
+      }
+
+      .brand-icon {
+        width: 37px;
+        height: 37px;
+        font-size: 12px;
+      }
+
+      .brand-info strong {
+        font-size: 14px;
+      }
+
+      .brand-info span {
+        font-size: 10px;
+      }
+
+      .welcome-section {
+        min-height: auto;
+        padding: 27px 22px;
+        border-radius: 17px;
+      }
+
+      .welcome-text {
+        max-width: 100%;
+      }
+
+      .welcome-section h1 {
+        font-size: 24px;
+      }
+
+      .welcome-section p {
+        font-size: 11px;
+      }
+
+      .welcome-illustration {
+        display: none;
+      }
+
+      .section-block {
+        margin-top: 30px;
+      }
+
+      .section-heading h2 {
+        font-size: 19px;
+      }
+
+      .request-card {
+        padding: 14px;
       }
 
       .request-card-main {
@@ -1218,53 +1545,8 @@ interface AssignForm {
       .request-card-side {
         align-items: flex-end;
       }
-    }
 
-    @media (max-width: 520px) {
-      .page-heading,
-      .detail-heading {
-        align-items: flex-start;
-        flex-direction: column;
-        gap: 14px;
-      }
-
-      .page-heading h1,
-      .detail-heading h1 {
-        font-size: 25px;
-      }
-
-      .queue-counter {
-        flex-direction: row;
-        gap: 10px;
-        min-width: auto;
-        padding: 9px 15px;
-      }
-
-      .counter-number {
-        font-size: 21px;
-      }
-
-      .request-card {
-        padding: 14px;
-      }
-
-      .request-card-main {
-        flex-wrap: wrap;
-      }
-
-      .request-information {
-        flex-basis: calc(100% - 65px);
-      }
-
-      .request-card-side {
-        width: 100%;
-        flex-direction: row;
-        justify-content: space-between;
-        align-items: center;
-        padding-left: 64px;
-      }
-
-      .content-card {
+      .card {
         padding: 16px;
       }
 
@@ -1276,17 +1558,52 @@ interface AssignForm {
       .card-heading h2 {
         font-size: 15px;
       }
+
+      .dashboard-footer {
+        font-size: 9px;
+      }
     }
 
-    @media (max-width: 350px) {
+    @media (max-width: 360px) {
+      .dashboard-container {
+        padding: 15px 11px;
+      }
+
+      .welcome-section {
+        padding: 23px 17px;
+      }
+
+      .welcome-section h1 {
+        font-size: 21px;
+      }
+
       .information-grid {
         grid-template-columns: 1fr;
       }
+    }
 
-      .request-card-side {
-        padding-left: 0;
+    /* =====================================
+       TOUCH + ACCESSIBILITY
+    ===================================== */
+
+    @media (hover: none) {
+      .welcome-section:hover,
+      .card:hover,
+      .request-card:hover {
+        transform: none;
       }
     }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+      }
+    }
+
   `],
 })
 export class ManageReportsPage implements OnInit, OnDestroy {

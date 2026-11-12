@@ -731,8 +731,14 @@ import { FeedbackService } from '../services/feedback.service';
       }
     }
 
-    /* ACCESSIBILITY */
+ /* SMALL SCREENS: show only one "Create an account" link (the bottom one) */
+    @media (max-width: 650px) {
+      .register-section {
+        display: none;
+      }
+    }
 
+    /* ACCESSIBILITY */
     @media (prefers-reduced-motion: reduce) {
       *,
       *::before,

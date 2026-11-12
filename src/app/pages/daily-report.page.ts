@@ -2,7 +2,7 @@ import { ChangeDetectorRef, Component, OnDestroy, OnInit, inject } from '@angula
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
-  IonButton, IonContent, IonHeader, IonInput, IonItem, IonLabel, IonList, IonTitle, IonToolbar,
+  IonButton, IonContent, IonHeader, IonInput, IonItem, IonLabel, IonList, IonToolbar,
 } from '@ionic/angular';
 import { DailyReportService } from '../services/daily-report.service';
 import { FeedbackService } from '../services/feedback.service';
@@ -30,147 +30,226 @@ function todayPh(): string {
   standalone: true,
   imports: [
     DatePipe, FormsModule,
-    IonButton, IonContent, IonHeader, IonInput, IonItem, IonLabel, IonList, IonTitle, IonToolbar,
+    IonButton, IonContent, IonHeader, IonInput, IonItem, IonLabel, IonList, IonToolbar,
     PriorityBadgeComponent,
   ],
   template: `
     <ion-header class="ion-no-border">
-      <ion-toolbar class="page-toolbar">
-        <ion-title>Daily Report</ion-title>
+      <ion-toolbar class="top-toolbar">
+        <div class="brand" slot="start">
+          <div class="brand-icon">CR</div>
+          <div class="brand-info">
+            <strong>Campus Reports</strong>
+            <span>Admin · Daily Report</span>
+          </div>
+        </div>
       </ion-toolbar>
     </ion-header>
 
-    <ion-content class="ion-padding page-content">
+    <ion-content class="dashboard-content">
 
-      <!-- ===== DATE + DOWNLOAD ===== -->
-      <div class="card">
-        <ion-item lines="none" class="date-item">
-          <ion-label position="stacked">Date (Philippine time)</ion-label>
-          <ion-input type="date" [ngModel]="date" (ionChange)="onDateChange($event.detail.value)"></ion-input>
-        </ion-item>
-        <div class="row-actions">
-          <ion-button fill="outline" size="small" (click)="useToday()" [disabled]="loading">Today</ion-button>
-          <ion-button size="small" (click)="downloadPdf()" [disabled]="loading || !report">Download PDF</ion-button>
-        </div>
-        @if (report) {
-          <p class="meta">
-            Generated {{ report.generated_at | date: 'medium' }} by {{ report.generated_by.name }}
-            @if (isToday) { · refreshes every 30 seconds }
-          </p>
-        }
-      </div>
+      <main class="dashboard-container">
 
-      @if (loading && !report) {
-        <div class="empty-card">Loading the report…</div>
-      }
+        <!-- Welcome Section -->
+        <section class="welcome-section">
+          <div class="welcome-text">
+            <span class="eyebrow">ADMIN · DAILY REPORT</span>
 
-      @if (report) {
-        <!-- ===== SUMMARY ===== -->
-        <div class="card">
-          <h3 class="section-title">Summary</h3>
-          <div class="summary-grid">
-            <div class="stat"><span class="stat-value">{{ report.summary.completed }}</span><span class="meta">Completed</span></div>
-            <div class="stat"><span class="stat-value">{{ report.summary.still_open }}</span><span class="meta">Still open</span></div>
-            <div class="stat"><span class="stat-value">{{ report.summary.new_reports }}</span><span class="meta">New reports</span></div>
-            <div class="stat"><span class="stat-value">{{ report.summary.cancelled }}</span><span class="meta">Cancelled</span></div>
+            <h1>
+              Daily <span>Report</span>
+            </h1>
+
+            <p>
+              A plain record of what was reported, completed and still open.
+              No rankings, targets or scores.
+            </p>
+
+            <div class="welcome-role">
+              <span class="status-dot"></span>
+              {{ isToday ? 'Today' : 'Past date' }} · Philippine time
+            </div>
           </div>
-        </div>
 
-        <!-- ===== WHO DID WHAT ===== -->
-        <div class="card">
-          <h3 class="section-title">Who did what</h3>
-          @if (report.who_did_what.length === 0) {
-            <p class="meta">No jobs completed on this date.</p>
-          } @else {
-            <ion-list class="plain-list">
-              @for (row of report.who_did_what; track row.request_id) {
-                <ion-item lines="inset">
-                  <ion-label class="ion-text-wrap">
-                    <h2>{{ row.staff_name ?? 'No staff recorded' }}</h2>
-                    <p>Request #{{ row.request_id }} · {{ row.location_name }}</p>
-                  </ion-label>
-                  <span slot="end" class="meta">{{ formatTime(row.completed_at) }}</span>
-                </ion-item>
-              }
-            </ion-list>
-          }
-        </div>
+          <div class="welcome-illustration">
+            <div class="illustration-circle">
+              <span class="illustration-icon">✦</span>
+              <div class="illustration-shield">▤</div>
+            </div>
+          </div>
+        </section>
 
-        <!-- ===== COMPLETED JOBS ===== -->
-        @if (report.completed.length > 0) {
-          <h3 class="group-title">Completed jobs</h3>
-          @for (job of report.completed; track job.id) {
-            <div class="card job-card">
-              <h2 class="job-title">#{{ job.id }} · {{ job.title }}</h2>
-              <p class="meta">{{ job.category_name }} · {{ job.location_name }} · {{ job.department_name ?? 'No department' }}</p>
-              @if (job.priority) {
-                <p class="meta">Priority: <app-priority-badge [priority]="job.priority" /></p>
-              }
-              <p class="detail-text">{{ job.description }}</p>
+        <!-- Date + download -->
+        <section class="section-block">
+          <div class="control-card">
+            <ion-item lines="none" class="date-item">
+              <ion-label position="stacked">Date (Philippine time)</ion-label>
+              <ion-input type="date" [ngModel]="date" (ionChange)="onDateChange($event.detail.value)"></ion-input>
+            </ion-item>
+            <div class="row-actions">
+              <ion-button fill="outline" size="small" (click)="useToday()" [disabled]="loading">Today</ion-button>
+              <ion-button size="small" (click)="downloadPdf()" [disabled]="loading || !report">Download PDF</ion-button>
+            </div>
+            @if (report) {
+              <p class="meta">
+                Generated {{ report.generated_at | date: 'medium' }} by {{ report.generated_by.name }}
+                @if (isToday) { · refreshes every 30 seconds }
+              </p>
+            }
+          </div>
+        </section>
 
-              <dl class="facts">
-                <dt>Reported by</dt><dd>{{ job.reporter_name ?? '-' }}</dd>
-                <dt>Done by</dt><dd>{{ job.staff_name ?? '-' }}{{ job.staff_employee_id ? ' (ID ' + job.staff_employee_id + ')' : '' }}</dd>
-                <dt>Approved by</dt><dd>{{ job.approved_by_name ?? '-' }}</dd>
-                <dt>Reported</dt><dd>{{ formatFull(job.reported_at) }}</dd>
-                <dt>Assigned</dt><dd>{{ formatFull(job.assigned_at) }}</dd>
-                <dt>Started</dt><dd>{{ formatFull(job.started_at) }}</dd>
-                <dt>Proof sent</dt><dd>{{ formatFull(job.proof_sent_at) }}</dd>
-                <dt>Completed</dt><dd>{{ formatFull(job.completed_at) }}</dd>
-                <dt>Time to complete</dt><dd>{{ duration(job.reported_at, job.completed_at) }}</dd>
-                @if (job.send_back_count > 0) {
-                  <dt>Sent back</dt><dd>{{ job.send_back_count }} time{{ job.send_back_count === 1 ? '' : 's' }}</dd>
-                }
-                @if (job.latitude !== null && job.longitude !== null) {
-                  <dt>Coordinates</dt><dd>{{ job.latitude.toFixed(5) }}, {{ job.longitude.toFixed(5) }}</dd>
-                }
-              </dl>
+        @if (loading && !report) {
+          <div class="empty-card">Loading the report…</div>
+        }
 
-              <p class="block-label">Work done</p>
-              <p class="detail-text">{{ job.proof_note ?? 'No note written.' }}</p>
-              @if (job.admin_remark) {
-                <p class="block-label">Admin remark</p>
-                <p class="detail-text">{{ job.admin_remark }}</p>
-              }
-              <p class="block-label">Rating</p>
-              @if (job.rating !== null) {
-                <p class="detail-text">{{ job.rating }} / 5 · by {{ job.reviewer_name ?? 'faculty' }}</p>
-                @if (job.review_comment) {
-                  <p class="detail-text">“{{ job.review_comment }}”</p>
-                }
+        @if (report) {
+
+          <!-- Summary -->
+          <section class="section-block">
+            <div class="section-heading">
+              <div>
+                <span class="eyebrow">AT A GLANCE</span>
+                <h2>Summary</h2>
+              </div>
+            </div>
+            <div class="summary-grid">
+              <div class="stat"><span class="stat-value">{{ report.summary.completed }}</span><span class="meta">Completed</span></div>
+              <div class="stat"><span class="stat-value">{{ report.summary.still_open }}</span><span class="meta">Still open</span></div>
+              <div class="stat"><span class="stat-value">{{ report.summary.new_reports }}</span><span class="meta">New reports</span></div>
+              <div class="stat"><span class="stat-value">{{ report.summary.cancelled }}</span><span class="meta">Cancelled</span></div>
+            </div>
+          </section>
+
+          <!-- Who did what -->
+          <section class="section-block">
+            <div class="section-heading">
+              <div>
+                <span class="eyebrow">STAFF</span>
+                <h2>Who did what</h2>
+              </div>
+            </div>
+            <div class="card">
+              @if (report.who_did_what.length === 0) {
+                <p class="meta">No jobs completed on this date.</p>
               } @else {
-                <p class="detail-text">Not rated yet.</p>
+                <ion-list class="plain-list">
+                  @for (row of report.who_did_what; track row.request_id) {
+                    <ion-item lines="inset">
+                      <ion-label class="ion-text-wrap">
+                        <h2>{{ row.staff_name ?? 'No staff recorded' }}</h2>
+                        <p>Request #{{ row.request_id }} · {{ row.location_name }}</p>
+                      </ion-label>
+                      <span slot="end" class="meta">{{ formatTime(row.completed_at) }}</span>
+                    </ion-item>
+                  }
+                </ion-list>
               }
             </div>
+          </section>
+
+          <!-- Completed jobs -->
+          @if (report.completed.length > 0) {
+            <section class="section-block">
+              <div class="section-heading">
+                <div>
+                  <span class="eyebrow">CLOSED</span>
+                  <h2>Completed jobs</h2>
+                </div>
+              </div>
+
+              @for (job of report.completed; track job.id) {
+                <div class="card job-card">
+                  <h3 class="job-title">#{{ job.id }} · {{ job.title }}</h3>
+                  <p class="meta">{{ job.category_name }} · {{ job.location_name }} · {{ job.department_name ?? 'No department' }}</p>
+                  @if (job.priority) {
+                    <p class="meta">Priority: <app-priority-badge [priority]="job.priority" /></p>
+                  }
+                  <p class="detail-text">{{ job.description }}</p>
+
+                  <dl class="facts">
+                    <dt>Reported by</dt><dd>{{ job.reporter_name ?? '-' }}</dd>
+                    <dt>Done by</dt><dd>{{ job.staff_name ?? '-' }}{{ job.staff_employee_id ? ' (ID ' + job.staff_employee_id + ')' : '' }}</dd>
+                    <dt>Approved by</dt><dd>{{ job.approved_by_name ?? '-' }}</dd>
+                    <dt>Reported</dt><dd>{{ formatFull(job.reported_at) }}</dd>
+                    <dt>Assigned</dt><dd>{{ formatFull(job.assigned_at) }}</dd>
+                    <dt>Started</dt><dd>{{ formatFull(job.started_at) }}</dd>
+                    <dt>Proof sent</dt><dd>{{ formatFull(job.proof_sent_at) }}</dd>
+                    <dt>Completed</dt><dd>{{ formatFull(job.completed_at) }}</dd>
+                    <dt>Time to complete</dt><dd>{{ duration(job.reported_at, job.completed_at) }}</dd>
+                    @if (job.send_back_count > 0) {
+                      <dt>Sent back</dt><dd>{{ job.send_back_count }} time{{ job.send_back_count === 1 ? '' : 's' }}</dd>
+                    }
+                    @if (job.latitude !== null && job.longitude !== null) {
+                      <dt>Coordinates</dt><dd>{{ job.latitude.toFixed(5) }}, {{ job.longitude.toFixed(5) }}</dd>
+                    }
+                  </dl>
+
+                  <p class="block-label">Work done</p>
+                  <p class="detail-text">{{ job.proof_note ?? 'No note written.' }}</p>
+                  @if (job.admin_remark) {
+                    <p class="block-label">Admin remark</p>
+                    <p class="detail-text">{{ job.admin_remark }}</p>
+                  }
+                  <p class="block-label">Rating</p>
+                  @if (job.rating !== null) {
+                    <p class="detail-text">{{ job.rating }} / 5 · by {{ job.reviewer_name ?? 'faculty' }}</p>
+                    @if (job.review_comment) {
+                      <p class="detail-text">“{{ job.review_comment }}”</p>
+                    }
+                  } @else {
+                    <p class="detail-text">Not rated yet.</p>
+                  }
+                </div>
+              }
+            </section>
           }
+
+          <!-- Still open -->
+          <section class="section-block">
+            <div class="section-heading">
+              <div>
+                <span class="eyebrow">IN PROGRESS</span>
+                <h2>Still open</h2>
+              </div>
+            </div>
+            @if (report.still_open.length === 0) {
+              <div class="empty-card">No open jobs with activity on this date.</div>
+            } @else {
+              <div class="card">
+                <ion-list class="plain-list">
+                  @for (job of report.still_open; track job.id) {
+                    <ion-item lines="inset">
+                      <ion-label class="ion-text-wrap">
+                        <h2>#{{ job.id }} · {{ job.title }}</h2>
+                        <p>{{ statusText(job.status) }} · {{ job.staff_name ?? 'No staff yet' }}</p>
+                        <p class="meta">Reported {{ formatFull(job.reported_at) }} · {{ job.location_name }}</p>
+                      </ion-label>
+                    </ion-item>
+                  }
+                </ion-list>
+              </div>
+            }
+          </section>
         }
 
-        <!-- ===== STILL OPEN ===== -->
-        <h3 class="group-title">Still open</h3>
-        @if (report.still_open.length === 0) {
-          <div class="empty-card">No open jobs with activity on this date.</div>
-        } @else {
-          <div class="card">
-            <ion-list class="plain-list">
-              @for (job of report.still_open; track job.id) {
-                <ion-item lines="inset">
-                  <ion-label class="ion-text-wrap">
-                    <h2>#{{ job.id }} · {{ job.title }}</h2>
-                    <p>{{ statusText(job.status) }} · {{ job.staff_name ?? 'No staff yet' }}</p>
-                    <p class="meta">Reported {{ formatFull(job.reported_at) }} · {{ job.location_name }}</p>
-                  </ion-label>
-                </ion-item>
-              }
-            </ion-list>
-          </div>
-        }
-      }
+        <!-- Footer -->
+        <footer class="dashboard-footer">
+          <span>Campus Reports</span>
+          <span>Admin · Daily Report</span>
+        </footer>
+
+      </main>
+
     </ion-content>
   `,
   styles: [`
+
+    /* =====================================
+       GLOBAL DASHBOARD
+    ===================================== */
+
     :host {
       display: block;
-
       --purple-primary: #56318f;
       --purple-secondary: #7651b5;
       --purple-light: #b99ae8;
@@ -192,40 +271,271 @@ function todayPh(): string {
       --ion-toolbar-color: #302344;
       --ion-card-background: #ffffff;
       --ion-card-color: #302344;
-        }
+    }
 
-    .page-content {
+    .dashboard-content {
       --background: var(--background-color);
       --color: var(--text-dark);
     }
 
-    .page-toolbar {
+    .dashboard-container {
+      width: 100%;
+      max-width: 1250px;
+      margin: 0 auto;
+      padding: 32px 42px;
+      box-sizing: border-box;
+    }
+
+    /* =====================================
+       TOP NAVIGATION
+    ===================================== */
+
+    .top-toolbar {
       --background: #ffffff;
       --color: var(--text-dark);
+      --min-height: 76px;
+      --padding-start: 28px;
+      --padding-end: 28px;
       border-bottom: 1px solid var(--border-color);
     }
 
-    ion-title {
-      font-weight: 700;
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
 
+    .brand-icon {
+      width: 42px;
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 13px;
+      background: var(--purple-primary);
+      color: white;
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      transition: transform .25s ease, box-shadow .25s ease;
+    }
+
+    .brand-icon:hover {
+      transform: rotate(-7deg) scale(1.08);
+      box-shadow: 0 5px 14px rgba(86,49,143,.25);
+    }
+
+    .brand-info {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .brand-info strong {
+      color: var(--text-dark);
+      font-size: 16px;
+      font-weight: 750;
+    }
+
+    .brand-info span {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* =====================================
+       WELCOME BANNER
+    ===================================== */
+
+    .welcome-section {
+      min-height: 220px;
+      padding: 36px 42px;
+      box-sizing: border-box;
+      border-radius: 22px;
+      background: linear-gradient(120deg, #56318f 0%, #7651b5 60%, #8c6ac5 100%);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+      color: white;
+      box-shadow: 0 12px 30px rgba(86, 49, 143, 0.16);
+      transition: transform .25s ease, box-shadow .25s ease;
+    }
+
+    .welcome-section:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 16px 35px rgba(86,49,143,.22);
+    }
+
+    .welcome-text {
+      position: relative;
+      z-index: 2;
+      max-width: 650px;
+    }
+
+    .eyebrow {
+      display: block;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 1.6px;
+      margin-bottom: 12px;
+      color: #bfa8e9;
+    }
+
+    .welcome-section .eyebrow {
+      color: #dfd0f7;
+    }
+
+    .welcome-section h1 {
+      font-size: clamp(25px, 3vw, 35px);
+      font-weight: 750;
+      margin: 0 0 12px;
+      line-height: 1.25;
+    }
+
+    .welcome-section h1 span {
+      color: #d8c3ff;
+    }
+
+    .welcome-section p {
+      font-size: 13px;
+      line-height: 1.8;
+      color: #e8def6;
+      max-width: 510px;
+      margin: 0 0 20px;
+    }
+
+    .welcome-role {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      font-weight: 650;
+      background: rgba(255,255,255,0.13);
+      padding: 8px 14px;
+      border-radius: 30px;
+      transition: background .2s ease, transform .2s ease;
+    }
+
+    .welcome-role:hover {
+      background: rgba(255,255,255,.22);
+      transform: translateX(4px);
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      background: #d8c3ff;
+      border-radius: 50%;
+      animation: status-pulse 2s infinite;
+    }
+
+    .welcome-illustration {
+      width: 180px;
+      height: 160px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .illustration-circle {
+      width: 135px;
+      height: 135px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.23);
+      background: rgba(255,255,255,0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      transition: transform .35s ease, background .35s ease;
+    }
+
+    .welcome-section:hover .illustration-circle {
+      transform: rotate(8deg) scale(1.06);
+      background: rgba(255,255,255,.13);
+    }
+
+    .illustration-shield {
+      width: 72px;
+      height: 82px;
+      border: 3px solid rgba(255,255,255,0.6);
+      clip-path: polygon(50% 0%, 100% 20%, 90% 75%, 50% 100%, 10% 75%, 0% 20%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      color: white;
+      transition: transform .3s ease;
+    }
+
+    .welcome-section:hover .illustration-shield {
+      transform: scale(1.1);
+    }
+
+    .illustration-icon {
+      position: absolute;
+      top: 2px;
+      right: 10px;
+      font-size: 25px;
+      color: #e6d5ff;
+      transition: transform .3s ease;
+    }
+
+    .welcome-section:hover .illustration-icon {
+      transform: rotate(35deg) scale(1.2);
+    }
+
+    /* =====================================
+       SECTIONS
+    ===================================== */
+
+    .section-block {
+      margin-top: 38px;
+    }
+
+    .section-heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .section-heading .eyebrow {
+      color: var(--purple-secondary);
+      margin-bottom: 7px;
+    }
+
+    .section-heading h2 {
+      margin: 0;
+      font-size: 21px;
+      color: var(--text-dark);
+      font-weight: 750;
+    }
+
+    .control-card,
     .card {
       background: var(--card-background);
       border: 1px solid var(--border-color);
       border-radius: 16px;
-      padding: 16px;
+      padding: 18px;
       margin-bottom: 14px;
       color: var(--text-dark);
       box-shadow: 0 6px 18px rgba(86, 49, 143, 0.07);
       transition: transform .2s ease, box-shadow .2s ease;
     }
 
+    .control-card:hover,
     .card:hover {
       transform: translateY(-2px);
       box-shadow: 0 10px 24px rgba(86, 49, 143, 0.12);
     }
 
-    .job-card { margin-bottom: 18px; }
+    .job-card {
+      margin-bottom: 18px;
+    }
 
     .empty-card {
       background: var(--lavender);
@@ -238,20 +548,11 @@ function todayPh(): string {
       margin-bottom: 14px;
     }
 
-    .section-title,
     .job-title {
       margin: 0 0 8px;
+      font-size: 16px;
       font-weight: 700;
       color: var(--purple-primary);
-    }
-
-    .job-title { font-size: 16px; }
-
-    .group-title {
-      margin: 18px 4px 8px;
-      color: var(--purple-primary);
-      font-size: 15px;
-      font-weight: 700;
     }
 
     .meta {
@@ -276,6 +577,10 @@ function todayPh(): string {
       text-transform: uppercase;
       letter-spacing: 0.4px;
     }
+
+    /* =====================================
+       DATE + BUTTONS
+    ===================================== */
 
     .date-item {
       --background: transparent;
@@ -307,26 +612,44 @@ function todayPh(): string {
       --color: #ffffff;
     }
 
+    /* =====================================
+       SUMMARY
+    ===================================== */
+
     .summary-grid {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 10px;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
     }
 
     .stat {
-      background: var(--lavender);
-      border-radius: 14px;
-      padding: 12px;
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 16px;
       display: flex;
       flex-direction: column;
+      gap: 4px;
       color: var(--text-dark);
+      box-shadow: 0 6px 18px rgba(86, 49, 143, 0.07);
+      transition: transform .22s ease, border-color .22s ease, box-shadow .22s ease;
+    }
+
+    .stat:hover {
+      transform: translateY(-4px);
+      border-color: var(--purple-light);
+      box-shadow: 0 8px 20px rgba(86,49,143,.11);
     }
 
     .stat-value {
-      font-size: 24px;
+      font-size: 26px;
       font-weight: 800;
       color: var(--purple-primary);
     }
+
+    /* =====================================
+       LISTS
+    ===================================== */
 
     .plain-list {
       background: transparent;
@@ -345,8 +668,7 @@ function todayPh(): string {
       color: var(--purple-primary);
     }
 
-    .plain-list ion-item p,
-    .plain-list ion-item span {
+    .plain-list ion-item p {
       color: var(--text-dark);
     }
 
@@ -368,6 +690,159 @@ function todayPh(): string {
       margin: 0;
       color: var(--text-dark);
     }
+
+    /* =====================================
+       FOOTER
+    ===================================== */
+
+    .dashboard-footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 25px 0 10px;
+      margin-top: 35px;
+      border-top: 1px solid var(--border-color);
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* =====================================
+       ANIMATIONS
+    ===================================== */
+
+    @keyframes status-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(216,195,255,.6); }
+      50% { box-shadow: 0 0 0 5px rgba(216,195,255,0); }
+    }
+
+    /* =====================================
+       RESPONSIVENESS
+    ===================================== */
+
+    @media (max-width: 900px) {
+      .dashboard-container {
+        padding: 28px 24px;
+      }
+
+      .welcome-section {
+        padding: 30px;
+      }
+
+      .welcome-illustration {
+        width: 130px;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .dashboard-container {
+        padding: 20px 15px;
+      }
+
+      .top-toolbar {
+        --min-height: 65px;
+        --padding-start: 15px;
+        --padding-end: 12px;
+      }
+
+      .brand-icon {
+        width: 37px;
+        height: 37px;
+        font-size: 12px;
+      }
+
+      .brand-info strong {
+        font-size: 14px;
+      }
+
+      .brand-info span {
+        font-size: 10px;
+      }
+
+      .welcome-section {
+        min-height: auto;
+        padding: 27px 22px;
+        border-radius: 17px;
+      }
+
+      .welcome-text {
+        max-width: 100%;
+      }
+
+      .welcome-section h1 {
+        font-size: 24px;
+      }
+
+      .welcome-section p {
+        font-size: 11px;
+      }
+
+      .welcome-illustration {
+        display: none;
+      }
+
+      .section-block {
+        margin-top: 30px;
+      }
+
+      .section-heading h2 {
+        font-size: 19px;
+      }
+
+      .summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .facts {
+        grid-template-columns: 110px 1fr;
+      }
+
+      .dashboard-footer {
+        font-size: 9px;
+      }
+    }
+
+    @media (max-width: 360px) {
+      .dashboard-container {
+        padding: 15px 11px;
+      }
+
+      .welcome-section {
+        padding: 23px 17px;
+      }
+
+      .welcome-section h1 {
+        font-size: 21px;
+      }
+
+      .section-heading h2 {
+        font-size: 17px;
+      }
+    }
+
+    /* =====================================
+       TOUCH + ACCESSIBILITY
+    ===================================== */
+
+    @media (hover: none) {
+      .welcome-section:hover,
+      .control-card:hover,
+      .card:hover,
+      .stat:hover {
+        transform: none;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+      }
+    }
+
   `],
 })
 export class DailyReportPage implements OnInit, OnDestroy {
@@ -485,5 +960,5 @@ export class DailyReportPage implements OnInit, OnDestroy {
     } catch {
       void this.feedback.toast('Could not build the PDF. Please try again.', 'danger');
     }
-}
   }
+}

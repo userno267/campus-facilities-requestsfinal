@@ -13,6 +13,7 @@ import {
 import { AuthService } from '../services/auth.service';
 import { RequestService } from '../services/request.service';
 import { FeedbackService } from '../services/feedback.service';
+import { AdminRequestService } from '../services/admin-request.service';
 import { RequestCategory } from '../models/request.model';
 
 // What each category is for, with examples. The database only stores the category NAME,
@@ -90,7 +91,7 @@ const DEFAULT_INFO: CategoryInfo = {
           <div class="brand-icon">CR</div>
           <div class="brand-info">
             <strong>Campus Reports</strong>
-            <span>Faculty Portal</span>
+            <span>{{ roleLabel }}</span>
           </div>
         </div>
 
@@ -109,21 +110,18 @@ const DEFAULT_INFO: CategoryInfo = {
         <!-- Welcome Section -->
         <section class="welcome-section">
           <div class="welcome-text">
-            <span class="eyebrow">FACULTY DASHBOARD</span>
+            <span class="eyebrow">{{ eyebrow }}</span>
 
             <h1>
               {{ greeting }},
-              <span>{{ auth.user()?.name || 'Faculty Member' }}!</span>
+              <span>{{ auth.user()?.name || 'Campus User' }}!</span>
             </h1>
 
-            <p>
-              Welcome to Campus Reports. Manage your campus concerns
-              and stay updated with your submitted requests.
-            </p>
+            <p>{{ welcomeText }}</p>
 
             <div class="welcome-role">
               <span class="status-dot"></span>
-              {{ auth.user()?.role || 'Faculty' }}
+              {{ rolePill }}
             </div>
           </div>
 
@@ -135,138 +133,166 @@ const DEFAULT_INFO: CategoryInfo = {
           </div>
         </section>
 
-        <!-- Quick Actions -->
+        <!-- Quick Actions (different for each role) -->
         <section class="section-block">
           <div class="section-heading">
             <div>
               <span class="eyebrow">GET STARTED</span>
               <h2>Quick Actions</h2>
-              <p>What would you like to do today?</p>
+              <p>{{ actionsText }}</p>
             </div>
           </div>
 
           <div class="quick-grid">
 
-            <button
-              type="button"
-              class="action-card primary-action"
-              (click)="goToNewReport()"
-            >
-              <div class="action-icon purple-icon">＋</div>
-
-              <div class="action-details">
-                <h3>Submit a Request</h3>
-                <p>Report a concern or submit a new campus request.</p>
-              </div>
-
-              <span class="action-arrow">→</span>
-            </button>
-
-            <button
-              type="button"
-              class="action-card"
-              (click)="goToMyReports()"
-            >
-              <div class="action-icon lavender-icon">▤</div>
-
-              <div class="action-details">
-                <h3>My Reports</h3>
-                <p>View and track your previously submitted requests.</p>
-              </div>
-
-              <span class="action-arrow">→</span>
-            </button>
-
-          </div>
-        </section>
-
-        <!-- Categories -->
-        <section class="section-block categories-section">
-
-          <div class="section-heading">
-            <div>
-              <span class="eyebrow">CAMPUS SERVICES</span>
-              <h2>Request Categories</h2>
-              <p>Explore the available categories for your requests.</p>
-            </div>
-
-            <div class="category-count">
-              {{ categories.length }} Available
-            </div>
-          </div>
-
-          @if (loading) {
-            <div class="loading-container">
-              <ion-spinner name="crescent"></ion-spinner>
-              <p>Loading categories...</p>
-            </div>
-          } @else {
-
-            <div class="category-grid">
-
-              @for (c of categories; track c.id) {
-                <div
-                  class="category-card"
-                  [class.open]="expandedId === c.id"
-                  role="button"
-                  tabindex="0"
-                  [attr.aria-expanded]="expandedId === c.id"
-                  (click)="toggleCategory(c.id)"
-                  (keydown.enter)="toggleCategory(c.id)"
-                  (keydown.space)="toggleCategory(c.id); $event.preventDefault()"
-                >
-
-                  <div class="category-icon">
-                    <span>▦</span>
-                  </div>
-
-                  <div class="category-info">
-                    <h3>{{ c.name }}</h3>
-                    <p>{{ expandedId === c.id ? 'Tap to close' : 'Tap to see examples' }}</p>
-                  </div>
-
-                  <div class="category-indicator">→</div>
-
-                  @if (expandedId === c.id) {
-                    <div class="category-detail" (click)="$event.stopPropagation()">
-                      <p class="detail-about">{{ infoFor(c.name).about }}</p>
-
-                      @if (infoFor(c.name).examples.length > 0) {
-                        <span class="detail-label">EXAMPLES</span>
-                        <ul class="detail-list">
-                          @for (ex of infoFor(c.name).examples; track ex) {
-                            <li>{{ ex }}</li>
-                          }
-                        </ul>
-                      }
-                    </div>
-                  }
-
+            @if (isFaculty) {
+              <button type="button" class="action-card primary-action" (click)="goTo('/tabs/new-report')">
+                <div class="action-icon purple-icon">＋</div>
+                <div class="action-details">
+                  <h3>Submit a Request</h3>
+                  <p>Report a concern or submit a new campus request.</p>
                 </div>
-              } @empty {
+                <span class="action-arrow">→</span>
+              </button>
 
-                <div class="empty-state">
-                  <div class="empty-icon">▤</div>
+              <button type="button" class="action-card" (click)="goTo('/tabs/my-reports')">
+                <div class="action-icon lavender-icon">▤</div>
+                <div class="action-details">
+                  <h3>My Reports</h3>
+                  <p>View and track your previously submitted requests.</p>
+                </div>
+                <span class="action-arrow">→</span>
+              </button>
+            }
 
-                  <h3>No Categories Available</h3>
+            @if (isAdmin) {
+              <button type="button" class="action-card primary-action" (click)="goTo('/tabs/dashboard')">
+                <div class="action-icon purple-icon">▤</div>
+                <div class="action-details">
+                  <h3>All Requests</h3>
+                  <p>Browse every request in any status. Read-only.</p>
+                </div>
+                <span class="action-arrow">→</span>
+              </button>
 
+              <div class="action-card info-card">
+                <div class="action-icon lavender-icon">✓</div>
+                <div class="action-details">
+                  <h3>Waiting for review</h3>
                   <p>
-                    There are currently no request categories.
-                    Please check again later.
+                    @if (pendingCount === null) {
+                      Open the Manage tab to see the queue.
+                    } @else {
+                      {{ pendingCount }} request{{ pendingCount === 1 ? '' : 's' }} need attention. Use the Manage tab to act.
+                    }
                   </p>
                 </div>
+              </div>
+            }
 
-              }
+            @if (isStaff) {
+              <button type="button" class="action-card primary-action" (click)="goTo('/tabs/assigned')">
+                <div class="action-icon purple-icon">▣</div>
+                <div class="action-details">
+                  <h3>My Job</h3>
+                  <p>Your current job, your queue and any paused jobs.</p>
+                </div>
+                <span class="action-arrow">→</span>
+              </button>
+            }
 
-            </div>
-          }
-
+          </div>
         </section>
+
+        <!-- Categories (faculty only: they are used when submitting a request) -->
+        @if (isFaculty) {
+          <section class="section-block categories-section">
+
+            <div class="section-heading">
+              <div>
+                <span class="eyebrow">CAMPUS SERVICES</span>
+                <h2>Request Categories</h2>
+                <p>Explore the available categories for your requests.</p>
+              </div>
+
+              <div class="category-count">
+                {{ categories.length }} Available
+              </div>
+            </div>
+
+            @if (loading) {
+              <div class="loading-container">
+                <ion-spinner name="crescent"></ion-spinner>
+                <p>Loading categories...</p>
+              </div>
+            } @else {
+
+              <div class="category-grid">
+
+                @for (c of categories; track c.id) {
+                  <div
+                    class="category-card"
+                    [class.open]="expandedId === c.id"
+                    role="button"
+                    tabindex="0"
+                    [attr.aria-expanded]="expandedId === c.id"
+                    (click)="toggleCategory(c.id)"
+                    (keydown.enter)="toggleCategory(c.id)"
+                    (keydown.space)="toggleCategory(c.id); $event.preventDefault()"
+                  >
+
+                    <div class="category-icon">
+                      <span>▦</span>
+                    </div>
+
+                    <div class="category-info">
+                      <h3>{{ c.name }}</h3>
+                      <p>{{ expandedId === c.id ? 'Tap to close' : 'Tap to see examples' }}</p>
+                    </div>
+
+                    <div class="category-indicator">→</div>
+
+                    @if (expandedId === c.id) {
+                      <div class="category-detail" (click)="$event.stopPropagation()">
+                        <p class="detail-about">{{ infoFor(c.name).about }}</p>
+
+                        @if (infoFor(c.name).examples.length > 0) {
+                          <span class="detail-label">EXAMPLES</span>
+                          <ul class="detail-list">
+                            @for (ex of infoFor(c.name).examples; track ex) {
+                              <li>{{ ex }}</li>
+                            }
+                          </ul>
+                        }
+                      </div>
+                    }
+
+                  </div>
+                } @empty {
+
+                  <div class="empty-state">
+                    <div class="empty-icon">▤</div>
+
+                    <h3>No Categories Available</h3>
+
+                    <p>
+                      There are currently no request categories.
+                      Please check again later.
+                    </p>
+                  </div>
+
+                }
+
+              </div>
+            }
+
+          </section>
+        }
 
         <!-- Footer -->
         <footer class="dashboard-footer">
           <span>Campus Reports</span>
-          <span>Faculty Portal · {{ currentYear }}</span>
+          <span>{{ roleLabel }} · {{ currentYear }}</span>
         </footer>
 
       </main>
@@ -868,6 +894,15 @@ const DEFAULT_INFO: CategoryInfo = {
       font-size: 12px;
     }
 
+    /* Non-clickable card (admin "Waiting for review") */
+    .info-card {
+      cursor: default;
+    }
+
+    .info-card:hover {
+      transform: none;
+    }
+
     /* =====================================
        FOOTER
     ===================================== */
@@ -1111,6 +1146,7 @@ export class HomePage implements OnInit {
   auth = inject(AuthService);
 
   private requestService = inject(RequestService);
+  private adminService = inject(AdminRequestService);
   private feedback = inject(FeedbackService);
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
@@ -1119,10 +1155,66 @@ export class HomePage implements OnInit {
 
   loading = true;
 
+  // Admin only: how many requests need attention. null = not loaded (or not an admin).
+  pendingCount: number | null = null;
+
   // The category card that is open (showing its details), or null when all are closed.
   expandedId: number | null = null;
 
   currentYear = new Date().getFullYear();
+
+  // ----- Role -----
+
+  get role(): string {
+    return this.auth.user()?.role ?? '';
+  }
+
+  get isFaculty(): boolean {
+    return this.role === 'faculty';
+  }
+
+  get isAdmin(): boolean {
+    return this.role === 'admin';
+  }
+
+  get isStaff(): boolean {
+    return this.role === 'staff';
+  }
+
+  get roleLabel(): string {
+    if (this.isAdmin) return 'Admin Portal';
+    if (this.isStaff) return 'Staff Portal';
+    return 'Faculty Portal';
+  }
+
+  get eyebrow(): string {
+    if (this.isAdmin) return 'ADMIN DASHBOARD';
+    if (this.isStaff) return 'STAFF DASHBOARD';
+    return 'FACULTY DASHBOARD';
+  }
+
+  get welcomeText(): string {
+    if (this.isAdmin) {
+      return 'Review, assign and track campus requests. Your queue and the full request list are one tap away.';
+    }
+    if (this.isStaff) {
+      return 'Open My Job to see your current job, your queue and any paused jobs.';
+    }
+    return 'Welcome to Campus Reports. Manage your campus concerns and stay updated with your submitted requests.';
+  }
+
+  get actionsText(): string {
+    if (this.isAdmin) return 'Jump to the work that needs you.';
+    if (this.isStaff) return 'Your work, one tap away.';
+    return 'What would you like to do today?';
+  }
+
+  get rolePill(): string {
+    if (this.isAdmin && this.pendingCount !== null) {
+      return `${this.pendingCount} waiting for review`;
+    }
+    return this.roleLabel;
+  }
 
   get greeting(): string {
     const hour = new Date().getHours();
@@ -1133,8 +1225,32 @@ export class HomePage implements OnInit {
     return 'Good evening';
   }
 
+  // ----- Loading -----
+
   async ngOnInit() {
-    await this.loadCategories();
+    await this.refreshForRole();
+  }
+
+  // Ionic keeps this tab alive, so reload the role data each time it is shown.
+  // This also fixes the case where a different account has logged in.
+  ionViewWillEnter() {
+    void this.refreshForRole();
+  }
+
+  private async refreshForRole() {
+    if (this.isFaculty) {
+      await this.loadCategories();
+    } else {
+      this.loading = false;
+    }
+
+    if (this.isAdmin) {
+      await this.loadPending();
+    } else {
+      this.pendingCount = null;
+    }
+
+    this.cdr.markForCheck();
   }
 
   async loadCategories() {
@@ -1152,6 +1268,20 @@ export class HomePage implements OnInit {
     }
   }
 
+  // Admin only. A failure just leaves the count blank; no error toast.
+  async loadPending() {
+    try {
+      const rows = await this.adminService.loadQueue();
+      this.pendingCount = rows.length;
+    } catch {
+      this.pendingCount = null;
+    } finally {
+      this.cdr.markForCheck();
+    }
+  }
+
+  // ----- Actions -----
+
   // Tap a category card to open it, tap again to close it.
   toggleCategory(id: number): void {
     this.expandedId = this.expandedId === id ? null : id;
@@ -1161,12 +1291,8 @@ export class HomePage implements OnInit {
     return CATEGORY_INFO[name.trim().toLowerCase()] ?? DEFAULT_INFO;
   }
 
-  async goToNewReport() {
-    await this.router.navigateByUrl('/tabs/new-report');
-  }
-
-  async goToMyReports() {
-    await this.router.navigateByUrl('/tabs/my-reports');
+  async goTo(path: string) {
+    await this.router.navigateByUrl(path);
   }
 
   async logout() {
