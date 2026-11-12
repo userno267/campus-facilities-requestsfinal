@@ -66,6 +66,12 @@ export const routes: Routes = [
         canActivate: [roleGuard('admin')],
         loadComponent: () => import('./pages/admin-catalog.page').then((m) => m.AdminCatalogPage),
       },
+      // Users: admin adds users, changes role or department, and deactivates accounts.
+      {
+        path: 'users',
+        canActivate: [roleGuard('admin')],
+        loadComponent: () => import('./pages/admin-users.page').then((m) => m.AdminUsersPage),
+      },
       // Step 9: the Control tab is removed (no route for it any more).
 
       // Step 5: the real staff job screen.

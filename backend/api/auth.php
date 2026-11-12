@@ -34,13 +34,17 @@ if ($method === 'POST' && $action === 'login') {
     }
 
     // This is the only place the hash is read. It stays inside PHP.
-    $stmt = $conn->prepare('SELECT id, password_hash FROM users WHERE email = ?');
+    $stmt = $conn->prepare('SELECT id, password_hash, CASE WHEN active THEN 1 ELSE 0 END AS active_flag FROM users WHERE email = ?');
     $stmt->execute([$email]);
     $row = $stmt->fetch(); // false when no row matches
 
     // Same message for "no such email" and "wrong password" so attackers learn nothing.
     if (!$row || !password_verify($password, $row['password_hash'])) {
         sendResponse(['error' => 'Invalid email or password'], 401);
+    }
+    // Checked after the password, so only the real owner of the account learns it is deactivated.
+    if ((int) $row['active_flag'] !== 1) {
+        sendResponse(['error' => 'This account is deactivated. Please contact an administrator.'], 403);
     }
 
     sendResponse(['user' => fetchPublicUser($conn, (int) $row['id'])], 200);

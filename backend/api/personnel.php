@@ -12,7 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 
 // Optional filter: ?department_id=1 returns only that department's staff.
 $params = [];
-$where  = "WHERE u.role = 'staff'";
+$where  = "WHERE u.role = 'staff' AND u.active = TRUE";   // deactivated staff cannot be assigned
 if (isset($_GET['department_id']) && $_GET['department_id'] !== '') {
     $params[] = positiveInt($_GET['department_id'], 'department_id must be a number');
     $where   .= ' AND u.department_id = ?';

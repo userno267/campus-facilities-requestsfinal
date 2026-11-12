@@ -21,6 +21,8 @@ CREATE TABLE users (
     role          VARCHAR(20)  NOT NULL CHECK (role IN ('faculty', 'admin', 'staff')),
     employee_id   VARCHAR(50)  NOT NULL UNIQUE,
     department_id INTEGER REFERENCES departments(id),
+    -- Deactivated users cannot log in, but their history is kept.
+    active        BOOLEAN      NOT NULL DEFAULT TRUE,
     created_at    TIMESTAMPTZ  NOT NULL DEFAULT now(),
     -- Staff must belong to a department; faculty and admin must not.
     CONSTRAINT staff_needs_department CHECK (

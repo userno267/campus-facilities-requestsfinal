@@ -19,6 +19,7 @@ import {
   starOutline,
   documentTextOutline,
   settingsOutline,
+  peopleCircleOutline,
 } from 'ionicons/icons';
 
 import { addIcons } from 'ionicons';
@@ -86,6 +87,11 @@ import { AuthService } from '../services/auth.service';
             <ion-tab-button tab="catalog">
               <ion-icon name="settings-outline"></ion-icon>
               <ion-label>Setup</ion-label>
+            </ion-tab-button>
+
+            <ion-tab-button tab="users">
+              <ion-icon name="people-circle-outline"></ion-icon>
+              <ion-label>Users</ion-label>
             </ion-tab-button>
 
             <ion-tab-button tab="account">
@@ -417,6 +423,7 @@ export class TabsPage {
       starOutline,
       documentTextOutline,
       settingsOutline,
+      peopleCircleOutline,
     });
 
   }

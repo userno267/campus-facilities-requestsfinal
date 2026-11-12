@@ -194,7 +194,9 @@ function requireUser(PDO $conn, array $allowedRoles = []): array {
     }
 
     $stmt = $conn->prepare(
-        'SELECT id, name, email, role, employee_id, department_id FROM users WHERE id = ?'
+        'SELECT id, name, email, role, employee_id, department_id,
+                CASE WHEN active THEN 1 ELSE 0 END AS active_flag
+         FROM users WHERE id = ?'
     );
     $stmt->execute([$userId]);
     $user = $stmt->fetch();   // false when no row matches
@@ -202,6 +204,11 @@ function requireUser(PDO $conn, array $allowedRoles = []): array {
     if (!$user) {
         sendResponse(['error' => 'Not logged in'], 401);
     }
+    // A deactivated account is treated like a logged-out one.
+    if ((int) $user['active_flag'] !== 1) {
+        sendResponse(['error' => 'This account is deactivated. Please contact an administrator.'], 401);
+    }
+    unset($user['active_flag']);
     if ($allowedRoles && !in_array($user['role'], $allowedRoles, true)) {
         sendResponse(['error' => 'You do not have permission to do this'], 403);
     }
