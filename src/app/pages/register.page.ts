@@ -49,7 +49,12 @@ import { Department } from '../models/user.model';
 
               <!-- MOBILE BRAND -->
               <div class="mobile-brand">
-                <div class="brand-logo">CR</div>
+                <div class="brand-header">
+                  <img
+                    src="assets/campus-reports-logo.png"
+                    alt="Campus Reports logo"
+                    class="brand-logo-img" />
+                </div>
                 <strong>Campus Reports</strong>
               </div>
 
@@ -251,7 +256,12 @@ import { Department } from '../models/user.model';
 
               <div class="overlay-panel">
 
-                <div class="panel-logo">CR</div>
+                <div class="brand-header">
+                  <img
+                    src="assets/campus-reports-logo.png"
+                    alt="Campus Reports logo"
+                    class="brand-logo-img" />
+                </div>
 
                 <span class="panel-eyebrow">
                   YOUR CAMPUS, YOUR VOICE
@@ -287,6 +297,10 @@ import { Department } from '../models/user.model';
   `,
 
   styles: [`
+    .brand-header { display: flex; align-items: center; gap: 12px; }
+    .brand-logo-img { height: 42px; width: auto; max-width: 160px; object-fit: contain; }
+    @media (max-width: 600px) { .brand-logo-img { height: 34px; } }
+
 
     :host {
       --purple-primary: #56318F;
@@ -736,6 +750,13 @@ import { Department } from '../models/user.model';
       justify-content: center;
 
       text-align: center;
+    }
+
+    .overlay-panel .brand-header {
+      margin-bottom: 22px;
+      padding: 6px 10px;
+      border-radius: 14px;
+      background: #ffffff;
     }
 
     .panel-logo {

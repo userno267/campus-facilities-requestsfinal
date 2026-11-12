@@ -56,11 +56,22 @@ const STATUS_ORDER: RequestStatus[] = [
         @if (selected) {
           <ion-buttons slot="start">
             <ion-button (click)="backToList()">← Back</ion-button>
+            <div class="brand-header">
+              <img
+                src="assets/campus-reports-logo.png"
+                alt="Campus Reports logo"
+                class="brand-logo-img" />
+            </div>
           </ion-buttons>
           <ion-title>Request #{{ selected.id }}</ion-title>
         } @else {
           <div class="brand" slot="start">
-            <div class="brand-icon">CR</div>
+            <div class="brand-header">
+              <img
+                src="assets/campus-reports-logo.png"
+                alt="Campus Reports logo"
+                class="brand-logo-img" />
+            </div>
             <div class="brand-info">
               <strong>Campus Reports</strong>
               <span>Admin · All Requests</span>
@@ -265,6 +276,10 @@ const STATUS_ORDER: RequestStatus[] = [
     </ion-content>
   `,
   styles: [`
+    .brand-header { display: flex; align-items: center; gap: 12px; }
+    .brand-logo-img { height: 42px; width: auto; max-width: 160px; object-fit: contain; }
+    @media (max-width: 600px) { .brand-logo-img { height: 34px; } }
+
 
     /* =====================================
        GLOBAL DASHBOARD

@@ -1,13 +1,17 @@
-// This file can be replaced during build by using the `fileReplacements` array.
-// `ng build` replaces `environment.ts` with `environment.prod.ts`.
-// The list of file replacements can be found in `angular.json`.
+// Development settings. `ionic serve` (the browser and the phone) uses this file.
+//
+// The API address is built from the address the page was opened on:
+//   - Open the app at http://localhost:8100      -> API at http://localhost:8000/api
+//   - Open the app at http://192.168.8.39:8100   -> API at http://192.168.8.39:8000/api
+// So the same build works on the PC (localhost), on the phone over USB (adb reverse),
+// and on the phone over Wi-Fi (your PC's LAN IP), with no editing.
+const host = window.location.hostname || 'localhost';
 
-// Development settings. `ionic serve` (the browser) uses this file.
 export const environment = {
   production: false,
-  // The backend as seen from this PC (Docker on localhost).
-  apiBase: 'http://localhost:8000/api',
+  apiBase: `http://${host}:8000/api`,
 };
+
 /*
  * For easier debugging in development mode, you can import the following file
  * to ignore zone related error stack frames such as `zone.run`, `zoneDelegate.invokeTask`.

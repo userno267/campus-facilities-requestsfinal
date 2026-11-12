@@ -63,6 +63,12 @@ type GpsState = 'idle' | 'loading' | GpsStatus;
   template: `
     <ion-header class="ion-no-border">
       <ion-toolbar class="page-toolbar">
+        <div class="brand-header" slot="start">
+          <img
+            src="assets/campus-reports-logo.png"
+            alt="Campus Reports logo"
+            class="brand-logo-img" />
+        </div>
         <ion-title>New Report</ion-title>
       </ion-toolbar>
     </ion-header>
@@ -319,6 +325,10 @@ type GpsState = 'idle' | 'loading' | GpsStatus;
   `,
 
   styles: [`
+    .brand-header { display: flex; align-items: center; gap: 12px; }
+    .brand-logo-img { height: 42px; width: auto; max-width: 160px; object-fit: contain; }
+    @media (max-width: 600px) { .brand-logo-img { height: 34px; } }
+
 
     :host {
       --purple-primary: #56318f;

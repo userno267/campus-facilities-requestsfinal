@@ -25,8 +25,8 @@ import { AuthService } from '../services/auth.service';
         <div class="brand-header">
           <img
             src="assets/campus-reports-logo.png"
-            alt="Campus Reports - Faculty Portal"
-          />
+            alt="Campus Reports logo"
+            class="brand-logo-img" />
         </div>
       </ion-toolbar>
     </ion-header>
@@ -133,6 +133,10 @@ import { AuthService } from '../services/auth.service';
     </ion-content>
   `,
   styles: [`
+    .brand-header { display: flex; align-items: center; gap: 12px; }
+    .brand-logo-img { height: 42px; width: auto; max-width: 160px; object-fit: contain; }
+    @media (max-width: 600px) { .brand-logo-img { height: 34px; } }
+
     /* Page Background */
     .page-content {
       --background: #faf8fd;
@@ -147,25 +151,6 @@ import { AuthService } from '../services/auth.service';
       padding-inline: 30px;
     }
 
-    /* Campus Reports Branding */
-    .brand-header {
-      display: flex;
-      align-items: center;
-      justify-content: flex-start;
-      width: 100%;
-      height: 90px;
-      overflow: visible;
-    }
-
-    .brand-header img {
-      display: block;
-      width: auto;
-      height: auto;
-      max-width: 220px;
-      max-height: 76px;
-      object-fit: contain;
-      object-position: left center;
-    }
 
     /* Main Container */
     .home-container {
@@ -549,11 +534,6 @@ import { AuthService } from '../services/auth.service';
         padding-inline: 20px;
       }
 
-      .brand-header img {
-        max-width: 200px;
-        max-height: 72px;
-      }
-
       .home-container {
         max-width: 100%;
         padding: 22px 16px 30px;
@@ -582,15 +562,6 @@ import { AuthService } from '../services/auth.service';
       .page-toolbar {
         --min-height: 76px;
         padding-inline: 15px;
-      }
-
-      .brand-header {
-        height: 76px;
-      }
-
-      .brand-header img {
-        max-width: 185px;
-        max-height: 65px;
       }
 
       .home-container {
@@ -638,11 +609,6 @@ import { AuthService } from '../services/auth.service';
     @media (max-width: 360px) {
       .home-container {
         padding-inline: 12px;
-      }
-
-      .brand-header img {
-        max-width: 165px;
-        max-height: 60px;
       }
 
       .action-card {

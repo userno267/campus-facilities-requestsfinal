@@ -35,7 +35,12 @@ import { FeedbackService } from '../services/feedback.service';
             <div class="login-card">
 
               <div class="mobile-brand">
-                <div class="brand-logo">CR</div>
+                <div class="brand-header">
+                  <img
+                    src="assets/campus-reports-logo.png"
+                    alt="Campus Reports logo"
+                    class="brand-logo-img" />
+                </div>
                 <strong>Campus Reports</strong>
               </div>
 
@@ -123,7 +128,12 @@ import { FeedbackService } from '../services/feedback.service';
             <div class="overlay">
 
               <div class="overlay-panel overlay-left">
-                <div class="panel-logo">CR</div>
+                <div class="brand-header">
+                  <img
+                    src="assets/campus-reports-logo.png"
+                    alt="Campus Reports logo"
+                    class="brand-logo-img" />
+                </div>
 
                 <h1>Welcome Back!</h1>
 
@@ -141,7 +151,12 @@ import { FeedbackService } from '../services/feedback.service';
               </div>
 
               <div class="overlay-panel overlay-right">
-                <div class="panel-logo">CR</div>
+                <div class="brand-header">
+                  <img
+                    src="assets/campus-reports-logo.png"
+                    alt="Campus Reports logo"
+                    class="brand-logo-img" />
+                </div>
 
                 <span class="panel-eyebrow">
                   YOUR CAMPUS, YOUR VOICE
@@ -177,6 +192,10 @@ import { FeedbackService } from '../services/feedback.service';
     </ion-content>
   `,
   styles: [`
+    .brand-header { display: flex; align-items: center; gap: 12px; }
+    .brand-logo-img { height: 42px; width: auto; max-width: 160px; object-fit: contain; }
+    @media (max-width: 600px) { .brand-logo-img { height: 34px; } }
+
     :host {
       --purple-primary: #56318f;
       --purple-secondary: #7651b5;
@@ -520,6 +539,13 @@ import { FeedbackService } from '../services/feedback.service';
     .overlay-right {
       right: 0;
       transition: transform .7s;
+    }
+
+    .overlay-panel .brand-header {
+      margin-bottom: 22px;
+      padding: 6px 10px;
+      border-radius: 14px;
+      background: #ffffff;
     }
 
     .panel-logo {

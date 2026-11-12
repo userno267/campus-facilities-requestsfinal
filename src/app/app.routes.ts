@@ -60,6 +60,12 @@ export const routes: Routes = [
         canActivate: [roleGuard('admin')],
         loadComponent: () => import('./pages/daily-report.page').then((m) => m.DailyReportPage),
       },
+      // Setup: admin adds, renames and deletes departments and categories.
+      {
+        path: 'catalog',
+        canActivate: [roleGuard('admin')],
+        loadComponent: () => import('./pages/admin-catalog.page').then((m) => m.AdminCatalogPage),
+      },
       // Step 9: the Control tab is removed (no route for it any more).
 
       // Step 5: the real staff job screen.

@@ -52,6 +52,12 @@ const STATUS_COLORS: Record<RequestStatus, string> = {
             defaultHref="/tabs/my-reports"
             text="Back">
           </ion-back-button>
+          <div class="brand-header">
+            <img
+              src="assets/campus-reports-logo.png"
+              alt="Campus Reports logo"
+              class="brand-logo-img" />
+          </div>
         </ion-buttons>
         <ion-title>Request Details</ion-title>
       </ion-toolbar>
@@ -225,6 +231,10 @@ const STATUS_COLORS: Record<RequestStatus, string> = {
     </ion-content>
   `,
   styles: [`
+    .brand-header { display: flex; align-items: center; gap: 12px; }
+    .brand-logo-img { height: 42px; width: auto; max-width: 160px; object-fit: contain; }
+    @media (max-width: 600px) { .brand-logo-img { height: 34px; } }
+
     :host {
       --purple-primary: #56318f;
       --purple-secondary: #7651b5;

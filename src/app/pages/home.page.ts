@@ -88,7 +88,12 @@ const DEFAULT_INFO: CategoryInfo = {
     <ion-header class="ion-no-border">
       <ion-toolbar class="top-toolbar">
         <div class="brand" slot="start">
-          <div class="brand-icon">CR</div>
+          <div class="brand-header">
+            <img
+              src="assets/campus-reports-logo.png"
+              alt="Campus Reports logo"
+              class="brand-logo-img" />
+          </div>
           <div class="brand-info">
             <strong>Campus Reports</strong>
             <span>{{ roleLabel }}</span>
@@ -301,6 +306,10 @@ const DEFAULT_INFO: CategoryInfo = {
   `,
 
   styles: [`
+    .brand-header { display: flex; align-items: center; gap: 12px; }
+    .brand-logo-img { height: 42px; width: auto; max-width: 160px; object-fit: contain; }
+    @media (max-width: 600px) { .brand-logo-img { height: 34px; } }
+
 
     /* =====================================
        GLOBAL DASHBOARD

@@ -51,6 +51,12 @@ type GpsState = 'idle' | 'loading' | GpsStatus;
   template: `
     <ion-header class="ion-no-border">
       <ion-toolbar class="page-toolbar">
+        <div class="brand-header" slot="start">
+          <img
+            src="assets/campus-reports-logo.png"
+            alt="Campus Reports logo"
+            class="brand-logo-img" />
+        </div>
         <ion-title>My Job</ion-title>
         <ion-buttons slot="end">
           <ion-button
@@ -375,6 +381,10 @@ type GpsState = 'idle' | 'loading' | GpsStatus;
     </ion-content>
   `,
   styles: [`
+    .brand-header { display: flex; align-items: center; gap: 12px; }
+    .brand-logo-img { height: 42px; width: auto; max-width: 160px; object-fit: contain; }
+    @media (max-width: 600px) { .brand-logo-img { height: 34px; } }
+
     :host {
       display: block;
 
