@@ -1,0 +1,53 @@
+# The "version" line was removed because Docker Compose no longer uses it.
+
+services:
+  www:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: campus-reports-web
+    volumes:
+      - "./:/var/www/html"
+    ports:
+      - "8000:80"
+    environment:
+      - APACHE_DOCUMENT_ROOT=/var/www/html
+    depends_on:
+      - db
+    networks:
+      - campus-network
+
+  db:
+    image: postgres:16
+    container_name: campus-reports-db
+    environment:
+      - POSTGRES_DB=campus_reports
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=root123
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    networks:
+      - campus-network
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: campus-reports-pgadmin
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@campus.edu
+      - PGADMIN_DEFAULT_PASSWORD=root123
+    ports:
+      - "8001:80"
+    depends_on:
+      - db
+    networks:
+      - campus-network
+
+volumes:
+  db_data:
+
+networks:
+  campus-network:
+    driver: bridge
