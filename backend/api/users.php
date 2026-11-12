@@ -6,6 +6,7 @@ require 'config.php';
 //   POST ?action=create               add a user with a temporary password
 //   POST ?action=update               change name, role and department
 //   POST ?action=set_active           deactivate or reactivate (never deletes, so history is kept)
+//   POST ?action=reset_password       give a user a new temporary password
 //
 // Safety rules, all checked here on the server:
 //  - an admin cannot deactivate themselves or change their own role (so there is always an admin);
@@ -258,8 +259,33 @@ if ($method === 'POST' && $action === 'set_active') {
     sendResponse(['user' => usersFetch($conn, $id)[0]], 200);
 }
 
+// ---------- POST reset_password (admin sets a new temporary password) ----------
+if ($method === 'POST' && $action === 'reset_password') {
+    $data     = getJsonBody();
+    $id       = positiveInt($data['id'] ?? null, 'User id must be a number');
+    $password = textField($data, 'password', false);
+
+    if ($password === '') {
+        sendResponse(['error' => 'Please enter a new password'], 400);
+    }
+    if (strlen($password) < 6) {
+        sendResponse(['error' => 'Password must be at least 6 characters'], 400);
+    }
+    // bcrypt ignores everything after 72 bytes, so refuse rather than truncate silently.
+    if (strlen($password) > 72) {
+        sendResponse(['error' => 'Password is too long (maximum 72 bytes)'], 400);
+    }
+
+    $stmt = $conn->prepare('UPDATE users SET password_hash = ? WHERE id = ? RETURNING id');
+    $stmt->execute([password_hash($password, PASSWORD_DEFAULT), $id]);
+    if ($stmt->fetchColumn() === false) {
+        sendResponse(['error' => 'User not found'], 404);
+    }
+    sendResponse(['ok' => true], 200);
+}
+
 // A known action sent with the wrong HTTP method gets 405. Anything else is unknown.
-if (in_array($action, ['list', 'create', 'update', 'set_active'], true)) {
+if (in_array($action, ['list', 'create', 'update', 'set_active', 'reset_password'], true)) {
     sendResponse(['error' => 'Method not allowed'], 405);
 }
 sendResponse(['error' => 'Invalid action'], 400);

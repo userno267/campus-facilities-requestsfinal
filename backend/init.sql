@@ -3,7 +3,8 @@
 -- Demo USERS are not seeded here: their passwords must be hashed with PHP's
 -- password_hash(), so config.php seeds them.
 --
--- Existing databases: run the ALTER TABLE migrations from the Feature 4 and C2 notes instead.
+-- This file already includes every migration in backend/migrations (001_paused, 002_user_active).
+-- Existing databases: run only the migration files you have not run yet instead of this file.
 
 -- Store and return all timestamps in UTC.
 ALTER DATABASE campus_reports SET timezone TO 'UTC';

@@ -12,6 +12,13 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/register.page').then((m) => m.RegisterPage),
   },
 
+    // Change my own password. Any logged-in user. Outside the tabs, so it has its own back button.
+  {
+    path: 'change-password',
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/change-password.page').then((m) => m.ChangePasswordPage),
+  },
+
     // Feature 2: request details. Outside the tabs, so it has its own back button.
   {
     path: 'request/:id',

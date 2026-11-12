@@ -100,6 +100,11 @@ export class UsersService {
     return this.post('update', { id, ...changes }, 'Could not update the user');
   }
 
+  // Admin sets a new temporary password for a user.
+  resetPassword(id: number, password: string): Promise<void> {
+    return this.post('reset_password', { id, password }, 'Could not reset the password');
+  }
+
   setActive(id: number, active: boolean): Promise<void> {
     return this.post('set_active', { id, active },
       active ? 'Could not reactivate the account' : 'Could not deactivate the account');

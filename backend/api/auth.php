@@ -128,8 +128,42 @@ if ($method === 'GET' && $action === 'me') {
     sendResponse(['user' => fetchPublicUser($conn, (int) $user['id'])], 200);
 }
 
+// ---------- CHANGE PASSWORD (any logged-in user changes their own) ----------
+if ($method === 'POST' && $action === 'change_password') {
+    $user    = requireUser($conn);   // the id comes from the header, never from the body
+    $data    = getJsonBody();
+    $current = textField($data, 'current_password', false);
+    $new     = textField($data, 'new_password', false);
+
+    if ($current === '' || $new === '') {
+        sendResponse(['error' => 'Current and new password are required'], 400);
+    }
+    if (strlen($new) < 6) {
+        sendResponse(['error' => 'New password must be at least 6 characters'], 400);
+    }
+    // bcrypt ignores everything after 72 bytes, so refuse rather than truncate silently.
+    if (strlen($new) > 72) {
+        sendResponse(['error' => 'New password is too long (maximum 72 bytes)'], 400);
+    }
+
+    $stmt = $conn->prepare('SELECT password_hash FROM users WHERE id = ?');
+    $stmt->execute([$user['id']]);
+    $hash = $stmt->fetchColumn();
+
+    if ($hash === false || strlen($current) > 72 || !password_verify($current, $hash)) {
+        sendResponse(['error' => 'Current password is incorrect'], 403);
+    }
+    if ($current === $new) {
+        sendResponse(['error' => 'New password must be different from the current one'], 400);
+    }
+
+    $conn->prepare('UPDATE users SET password_hash = ? WHERE id = ?')
+         ->execute([password_hash($new, PASSWORD_DEFAULT), $user['id']]);
+    sendResponse(['ok' => true], 200);
+}
+
 // A known action sent with the wrong HTTP method gets 405. Anything else is unknown.
-if (in_array($action, ['login', 'register', 'me'], true)) {
+if (in_array($action, ['login', 'register', 'me', 'change_password'], true)) {
     sendResponse(['error' => 'Method not allowed'], 405);
 }
 sendResponse(['error' => 'Invalid action'], 400);

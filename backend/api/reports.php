@@ -371,7 +371,7 @@ if ($method === 'POST' && $action === 'assign') {
         }
 
         // The chosen person must be staff, and must belong to the chosen department.
-        $staffStmt = $conn->prepare('SELECT role, department_id FROM users WHERE id = ?');
+        $staffStmt = $conn->prepare('SELECT role, department_id, CASE WHEN active THEN 1 ELSE 0 END AS active_flag FROM users WHERE id = ?');
         $staffStmt->execute([$staffId]);
         $staffRow = $staffStmt->fetch();
         if (!$staffRow || $staffRow['role'] !== 'staff') {
@@ -379,6 +379,10 @@ if ($method === 'POST' && $action === 'assign') {
         }
         if ((int) $staffRow['department_id'] !== $departmentId) {
             failAndRollBack($conn, 400, 'That staff member belongs to a different department');
+        }
+        // A deactivated account cannot take new jobs (the staff list already hides them).
+        if ((int) $staffRow['active_flag'] !== 1) {
+            failAndRollBack($conn, 400, 'That staff member is deactivated and cannot be assigned jobs');
         }
 
         // Busy check. A staff member can hold many queued (assigned) jobs, but only ONE working job

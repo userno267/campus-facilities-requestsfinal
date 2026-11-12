@@ -216,12 +216,27 @@ function countText(n: number, one: string, many: string = one + 's'): string {
               }
               @if (u.active) {
                 <ion-button class="ghost-btn" (click)="startEdit(u)">Edit</ion-button>
+                <ion-button class="ghost-btn" (click)="startReset(u)">Reset password</ion-button>
                 @if (!isMe(u.id)) {
                   <ion-button class="outline-btn" (click)="askDeactivate(u.id)">Deactivate</ion-button>
                 }
               } @else {
                 <ion-button class="ghost-btn" [disabled]="busy()" (click)="reactivate(u)">Reactivate</ion-button>
               }
+            </div>
+          }
+
+          @if (resetFor(u.id); as rs) {
+            <div class="delete-panel">
+              <p>Set a new temporary password for {{ u.name }}. Tell them to change it from the Account tab.</p>
+              <input class="field" type="text" maxlength="72" placeholder="New temporary password"
+                     autocomplete="off"
+                     [value]="rs.password"
+                     (input)="setResetPassword(textOf($event))" />
+              <div class="card-actions">
+                <ion-button class="primary-btn" [disabled]="busy()" (click)="confirmReset()">Save password</ion-button>
+                <ion-button class="ghost-btn" (click)="cancelReset()">Cancel</ion-button>
+              </div>
             </div>
           }
 
@@ -802,6 +817,8 @@ export class AdminUsersPage implements OnInit {
   // Reviews opened for one staff member (only one is open at a time).
   openReviews = signal<{ id: number; loading: boolean; reviews: StaffReview[] } | null>(null);
 
+  resetting = signal<{ id: number; name: string; password: string } | null>(null);
+
   editing = signal<EditState | null>(null);
   pending = signal<{ id: number; name: string; open_jobs: number } | null>(null);
 
@@ -995,6 +1012,7 @@ export class AdminUsersPage implements OnInit {
 
   startEdit(u: ManagedUser): void {
     this.pending.set(null);
+    this.resetting.set(null);
     const fallbackDept = this.departments()[0]?.id ?? null;
     this.editing.set({
       id: u.id,
@@ -1054,6 +1072,48 @@ export class AdminUsersPage implements OnInit {
     }
   }
 
+  // ----- reset password -----
+
+  resetFor(id: number) {
+    const r = this.resetting();
+    return r && r.id === id ? r : null;
+  }
+
+  startReset(u: ManagedUser): void {
+    this.editing.set(null);
+    this.pending.set(null);
+    this.resetting.set({ id: u.id, name: u.name, password: '' });
+  }
+
+  setResetPassword(value: string): void {
+    const r = this.resetting();
+    if (r) this.resetting.set({ ...r, password: value });
+  }
+
+  cancelReset(): void {
+    this.resetting.set(null);
+  }
+
+  async confirmReset(): Promise<void> {
+    const r = this.resetting();
+    if (!r) return;
+    if (r.password.length < 6) {
+      this.fail('Password must be at least 6 characters');
+      return;
+    }
+
+    this.busy.set(true);
+    try {
+      await this.users.resetPassword(r.id, r.password);
+      this.resetting.set(null);
+      await this.feedback.toast(`Password reset for ${r.name}`, 'success');
+    } catch (e: any) {
+      this.fail(e?.message ?? 'Could not reset the password');
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
   // ----- deactivate / reactivate -----
 
   pendingFor(id: number) {
@@ -1065,6 +1125,7 @@ export class AdminUsersPage implements OnInit {
     const u = this.all().find((x) => x.id === id);
     if (!u) return;
     this.editing.set(null);
+    this.resetting.set(null);
     this.pending.set({ id: u.id, name: u.name, open_jobs: u.role === 'staff' ? u.open_jobs : 0 });
   }
 

@@ -2,10 +2,10 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import {
   IonButton, IonButtons, IonContent, IonHeader, IonTitle, IonToolbar,
 } from '@ionic/angular';
-import { CatalogCategory, CatalogDepartment, CatalogService } from '../services/catalog.service';
+import { CatalogCategory, CatalogDepartment, CatalogLocation, CatalogService } from '../services/catalog.service';
 import { FeedbackService } from '../services/feedback.service';
 
-type Tab = 'departments' | 'categories';
+type Tab = 'departments' | 'categories' | 'locations';
 
 // One row in the list. Both tabs use the same shape.
 interface Row {
@@ -30,7 +30,7 @@ function countText(n: number, one: string, many: string = one + 's'): string {
   return `${n} ${n === 1 ? one : many}`;
 }
 
-// Admin "Setup" page: add, rename and delete departments and categories.
+// Admin "Setup" page: add, rename and delete departments, categories and locations.
 // Deleting something in use moves its requests (and staff and categories) to another item you pick.
 @Component({
   selector: 'app-admin-catalog',
@@ -61,8 +61,8 @@ function countText(n: number, one: string, many: string = one + 's'): string {
 
       <div class="page-heading">
         <span class="eyebrow">ADMIN SETUP</span>
-        <h1>Departments &amp; Categories</h1>
-        <p>Add, rename and remove the departments and categories used for reports.</p>
+        <h1>Departments, Categories &amp; Locations</h1>
+        <p>Add, rename and remove the departments, categories and locations used for reports.</p>
       </div>
 
       <!-- SUMMARY CARD -->
@@ -72,7 +72,8 @@ function countText(n: number, one: string, many: string = one + 's'): string {
         <div class="summary-info">
           <span class="summary-label">DEPARTMENTS</span>
           <h2>{{ departments().length }}</h2>
-          <p>{{ categories().length }} {{ categories().length === 1 ? 'category' : 'categories' }} in use</p>
+          <p>{{ categories().length }} {{ categories().length === 1 ? 'category' : 'categories' }} ·
+            {{ locations().length }} {{ locations().length === 1 ? 'location' : 'locations' }}</p>
         </div>
       </div>
 
@@ -83,6 +84,9 @@ function countText(n: number, one: string, many: string = one + 's'): string {
         <button type="button" class="tab"
                 [class.active]="tab() === 'categories'"
                 (click)="setTab('categories')">Categories</button>
+        <button type="button" class="tab"
+                [class.active]="tab() === 'locations'"
+                (click)="setTab('locations')">Locations</button>
       </div>
 
       <!-- ADD CARD -->
@@ -110,7 +114,7 @@ function countText(n: number, one: string, many: string = one + 's'): string {
 
       <!-- LIST -->
       <div class="section-heading">
-        <h2>{{ tab() === 'departments' ? 'Departments' : 'Categories' }}</h2>
+        <h2>{{ nounPlural() }}</h2>
         <span>{{ countLabel(rows().length) }}</span>
       </div>
 
@@ -150,7 +154,7 @@ function countText(n: number, one: string, many: string = one + 's'): string {
                     }
                   </select>
                 } @else {
-                  <p>Add another {{ p.type === 'departments' ? 'department' : 'category' }} first.</p>
+                  <p>Add another {{ nounFor(p.type) }} first.</p>
                 }
               } @else {
                 <p>Delete "{{ p.name }}"? Nothing is using it.</p>
@@ -569,6 +573,7 @@ export class AdminCatalogPage implements OnInit {
 
   departments = signal<CatalogDepartment[]>([]);
   categories = signal<CatalogCategory[]>([]);
+  locations = signal<CatalogLocation[]>([]);
 
   newName = signal('');
   newCategoryDept = signal<number | null>(null);
@@ -589,6 +594,13 @@ export class AdminCatalogPage implements OnInit {
         ].join(' · '),
       }));
     }
+    if (this.tab() === 'locations') {
+      return this.locations().map((l) => ({
+        id: l.id,
+        name: l.name,
+        meta: countText(l.request_count, 'request'),
+      }));
+    }
     return this.categories().map((c) => ({
       id: c.id,
       name: c.name,
@@ -604,16 +616,25 @@ export class AdminCatalogPage implements OnInit {
     void this.load();
   }
 
+  nounFor(type: Tab): string {
+    if (type === 'departments') return 'department';
+    if (type === 'locations') return 'location';
+    return 'category';
+  }
+
   noun(): string {
-    return this.tab() === 'departments' ? 'department' : 'category';
+    return this.nounFor(this.tab());
   }
 
   nounPlural(): string {
-    return this.tab() === 'departments' ? 'Departments' : 'Categories';
+    const t = this.tab();
+    if (t === 'departments') return 'Departments';
+    if (t === 'locations') return 'Locations';
+    return 'Categories';
   }
 
   countLabel(n: number): string {
-    return countText(n, this.noun(), this.noun() === 'department' ? 'departments' : 'categories');
+    return countText(n, this.noun(), this.nounPlural().toLowerCase());
   }
 
   async load(): Promise<void> {
@@ -622,6 +643,7 @@ export class AdminCatalogPage implements OnInit {
       const data = await this.catalog.list();
       this.departments.set(data.departments);
       this.categories.set(data.categories);
+      this.locations.set(data.locations);
 
       // Keep the default department picked for a new category, if it still exists.
       const ids = data.departments.map((d) => d.id);
@@ -676,6 +698,8 @@ export class AdminCatalogPage implements OnInit {
     try {
       if (this.tab() === 'departments') {
         await this.catalog.createDepartment(name);
+      } else if (this.tab() === 'locations') {
+        await this.catalog.createLocation(name);
       } else {
         const deptId = this.newCategoryDept();
         if (deptId === null) {
@@ -724,6 +748,8 @@ export class AdminCatalogPage implements OnInit {
     try {
       if (e.type === 'departments') {
         await this.catalog.renameDepartment(e.id, name);
+      } else if (e.type === 'locations') {
+        await this.catalog.renameLocation(e.id, name);
       } else {
         await this.catalog.renameCategory(e.id, name);
       }
@@ -752,6 +778,14 @@ export class AdminCatalogPage implements OnInit {
       if (d.staff_count) parts.push(countText(d.staff_count, 'staff member'));
       if (d.category_count) parts.push(countText(d.category_count, 'category', 'categories'));
       targets = this.departments()
+        .filter((x) => x.id !== id)
+        .map((x) => ({ id: x.id, name: x.name }));
+    } else if (type === 'locations') {
+      const l = this.locations().find((x) => x.id === id);
+      if (!l) return;
+      total = l.request_count;
+      if (l.request_count) parts.push(countText(l.request_count, 'request'));
+      targets = this.locations()
         .filter((x) => x.id !== id)
         .map((x) => ({ id: x.id, name: x.name }));
     } else {
@@ -801,6 +835,8 @@ export class AdminCatalogPage implements OnInit {
       const moveTo = p.inUse ? p.moveTo : null;
       if (p.type === 'departments') {
         await this.catalog.deleteDepartment(p.id, moveTo);
+      } else if (p.type === 'locations') {
+        await this.catalog.deleteLocation(p.id, moveTo);
       } else {
         await this.catalog.deleteCategory(p.id, moveTo);
       }

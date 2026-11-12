@@ -101,6 +101,9 @@ const DEFAULT_INFO: CategoryInfo = {
         </div>
 
         <ion-buttons slot="end">
+          <ion-button class="logout-btn" (click)="goTo('/change-password')">
+            Password
+          </ion-button>
           <ion-button class="logout-btn" (click)="logout()">
             Logout
           </ion-button>

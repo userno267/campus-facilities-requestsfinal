@@ -1,7 +1,7 @@
 <?php
 require 'config.php';
 
-// Admin catalog: add, rename and delete departments and categories. Admin only.
+// Admin catalog: add, rename and delete departments, categories and locations. Admin only.
 // Deleting something in use moves its requests (and, for a department, its staff and
 // default categories) to another item first, so nothing is left without a home.
 
@@ -15,6 +15,26 @@ if ($method !== 'GET' && $method !== 'POST') {
 }
 
 requireUser($conn, ['admin']);
+
+// Location names follow the same rules as locations.php (the New Report form), so a name
+// that is fine there is fine here: one space between words, 2 to 100 characters, simple punctuation.
+function catalogLocationName(array $data): string {
+    $name = preg_replace('/\s+/u', ' ', textField($data, 'name'));
+    $name = trim((string) $name);
+    if ($name === '') {
+        sendResponse(['error' => 'Please enter a name'], 400);
+    }
+    if (mb_strlen($name) < 2) {
+        sendResponse(['error' => 'The location name is too short'], 400);
+    }
+    if (mb_strlen($name) > CATALOG_NAME_MAX) {
+        sendResponse(['error' => 'Name must be ' . CATALOG_NAME_MAX . ' characters or less'], 400);
+    }
+    if (!preg_match('/^[\p{L}\p{N} .\-\'#\/()&,]+$/u', $name)) {
+        sendResponse(['error' => "Use only letters, numbers and simple punctuation (. - ' # / ( ) & ,)"], 400);
+    }
+    return $name;
+}
 
 // Stop with an error after undoing the open transaction.
 function catalogFail(PDO $conn, int $status, string $message, array $extra = []): void {
@@ -79,7 +99,7 @@ function catalogWriteFailed(PDO $conn, PDOException $e, string $duplicateMessage
     sendResponse(['error' => 'Could not save. Please try again.'], 500);
 }
 
-// ---------- GET list: departments and categories with how much each one is used ----------
+// ---------- GET list: departments, categories and locations with how much each one is used ----------
 if ($method === 'GET') {
     if ($action !== 'list') {
         sendResponse(['error' => 'Invalid action'], 400);
@@ -119,7 +139,19 @@ if ($method === 'GET') {
         'request_count'           => (int) $c['request_count'],
     ], $categories);
 
-    sendResponse(['departments' => $departments, 'categories' => $categories], 200);
+    $locations = $conn->query(
+        'SELECT l.id, l.name,
+                (SELECT COUNT(*) FROM requests r WHERE r.location_id = l.id) AS request_count
+         FROM locations l
+         ORDER BY l.name'
+    )->fetchAll();
+    $locations = array_map(fn($l) => [
+        'id'            => (int) $l['id'],
+        'name'          => $l['name'],
+        'request_count' => (int) $l['request_count'],
+    ], $locations);
+
+    sendResponse(['departments' => $departments, 'categories' => $categories, 'locations' => $locations], 200);
 }
 
 // ---------- POST: add, rename, delete (admin only) ----------
@@ -262,6 +294,69 @@ switch ($action) {
             $conn->commit();
         } catch (PDOException $e) {
             catalogWriteFailed($conn, $e, 'Could not delete the category');
+        }
+        sendResponse(['ok' => true], 200);
+
+    case 'loc_create':
+        $name = catalogLocationName($data);
+        if (catalogNameTaken($conn, 'locations', $name, null)) {
+            sendResponse(['error' => 'A location with this name already exists'], 409);
+        }
+        try {
+            $stmt = $conn->prepare('INSERT INTO locations (name) VALUES (?)');
+            $stmt->execute([$name]);
+        } catch (PDOException $e) {
+            catalogWriteFailed($conn, $e, 'A location with this name already exists');
+        }
+        sendResponse(['ok' => true], 201);
+
+    case 'loc_rename':
+        $id   = positiveInt($data['id'] ?? null, 'Choose a location');
+        $name = catalogLocationName($data);
+        catalogRequireRow($conn, 'locations', $id, 'Location not found');
+        if (catalogNameTaken($conn, 'locations', $name, $id)) {
+            sendResponse(['error' => 'A location with this name already exists'], 409);
+        }
+        try {
+            $stmt = $conn->prepare('UPDATE locations SET name = ? WHERE id = ?');
+            $stmt->execute([$name, $id]);
+        } catch (PDOException $e) {
+            catalogWriteFailed($conn, $e, 'A location with this name already exists');
+        }
+        sendResponse(['ok' => true], 200);
+
+    case 'loc_delete':
+        $id = positiveInt($data['id'] ?? null, 'Choose a location');
+        try {
+            $conn->beginTransaction();
+
+            $lock = $conn->prepare('SELECT 1 FROM locations WHERE id = ? FOR UPDATE');
+            $lock->execute([$id]);
+            if ($lock->fetchColumn() === false) {
+                catalogFail($conn, 404, 'Location not found');
+            }
+
+            $count = catalogCount($conn, 'SELECT COUNT(*) FROM requests WHERE location_id = ?', $id);
+            if ($count > 0) {
+                if (!isset($data['move_to_id'])) {
+                    catalogFail($conn, 409,
+                        'This location has requests. Choose a location to move them to.',
+                        ['needs_move' => true, 'usage' => ['requests' => $count]]);
+                }
+                $target = positiveInt($data['move_to_id'], 'Choose where to move them');
+                if ($target === $id) {
+                    catalogFail($conn, 400, 'Choose a different location to move them to');
+                }
+                catalogRequireRow($conn, 'locations', $target, 'The location to move to was not found');
+
+                $conn->prepare('UPDATE requests SET location_id = ? WHERE location_id = ?')
+                     ->execute([$target, $id]);
+            }
+
+            $conn->prepare('DELETE FROM locations WHERE id = ?')->execute([$id]);
+            $conn->commit();
+        } catch (PDOException $e) {
+            catalogWriteFailed($conn, $e, 'Could not delete the location');
         }
         sendResponse(['ok' => true], 200);
 

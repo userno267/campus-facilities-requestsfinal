@@ -20,9 +20,16 @@ export interface CatalogCategory {
   request_count: number;
 }
 
+export interface CatalogLocation {
+  id: number;
+  name: string;
+  request_count: number;
+}
+
 export interface CatalogList {
   departments: CatalogDepartment[];
   categories: CatalogCategory[];
+  locations: CatalogLocation[];
 }
 
 // Admin-only wrapper for catalog.php. Pages call this, this calls the API.
@@ -47,9 +54,10 @@ export class CatalogService {
       return {
         departments: response.departments ?? [],
         categories: response.categories ?? [],
+        locations: response.locations ?? [],
       };
     } catch (e: any) {
-      throw new Error(e.error?.error ?? 'Could not load departments and categories');
+      throw new Error(e.error?.error ?? 'Could not load the setup lists');
     }
   }
 
@@ -78,6 +86,19 @@ export class CatalogService {
   // moveToId is required by the server when the category has requests. Pass null when it does not.
   deleteCategory(id: number, moveToId: number | null): Promise<void> {
     return this.post('cat_delete', { id, move_to_id: moveToId }, 'Could not delete the category');
+  }
+
+  createLocation(name: string): Promise<void> {
+    return this.post('loc_create', { name }, 'Could not add the location');
+  }
+
+  renameLocation(id: number, name: string): Promise<void> {
+    return this.post('loc_rename', { id, name }, 'Could not rename the location');
+  }
+
+  // moveToId is required by the server when the location has requests. Pass null when it does not.
+  deleteLocation(id: number, moveToId: number | null): Promise<void> {
+    return this.post('loc_delete', { id, move_to_id: moveToId }, 'Could not delete the location');
   }
 
   private async post(action: string, body: object, fallback: string): Promise<void> {
