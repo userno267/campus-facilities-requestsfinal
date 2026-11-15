@@ -28,6 +28,13 @@
 /* Leaflet map styles (free map, C3). Needed for the map to draw correctly. */
 @import "leaflet/dist/leaflet.css";
 
+/* Space at the end of every page, so the last card is not squeezed against the
+   bottom tab bar (its shadow and the raised selected tab). Applies to every page
+   that uses <ion-content class="ion-padding page-content">. */
+ion-content.page-content.ion-padding {
+  --padding-bottom: 48px;
+}
+
 /**
  * Ionic Dark Mode
  * -----------------------------------------------------
