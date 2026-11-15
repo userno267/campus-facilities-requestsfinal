@@ -1,0 +1,7 @@
+# Not needed inside the web image, and init.sql / migrations should not be downloadable.
+init.sql
+migrations
+docker-compose.yaml
+.dockerignore
+*.md
+*.sql

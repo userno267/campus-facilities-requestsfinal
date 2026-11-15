@@ -13,3 +13,8 @@ RUN a2enmod rewrite
 
 # Set working directory
 WORKDIR /var/www/html
+
+# Put the API code inside the image, so a hosting service can run it without a volume.
+# Locally, docker-compose.yaml still mounts ./ over this folder, so edits show up instantly.
+# Files listed in .dockerignore (init.sql, migrations) are left out of the image.
+COPY . /var/www/html

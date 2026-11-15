@@ -26,11 +26,21 @@ set_exception_handler(function (Throwable $e) {
 });
 
 // ---------- Database configuration (PostgreSQL) ----------
-define('DB_HOST', 'db');        // the service name in docker-compose.yaml
-define('DB_PORT', '5432');
-define('DB_USER', 'postgres');
-define('DB_PASS', 'root123');
-define('DB_NAME', 'campus_reports');
+// On a hosting service, set these as environment variables (DB_HOST, DB_PORT, DB_USER,
+// DB_PASS, DB_NAME, DB_SSLMODE) so no password is written in the code.
+// With nothing set, the values below are the local Docker ones, so docker compose works as before.
+function envOr(string $name, string $default): string {
+    $value = getenv($name);
+    return ($value === false || $value === '') ? $default : $value;
+}
+
+define('DB_HOST', envOr('DB_HOST', 'db'));        // 'db' = the service name in docker-compose.yaml
+define('DB_PORT', envOr('DB_PORT', '5432'));
+define('DB_USER', envOr('DB_USER', 'postgres'));
+define('DB_PASS', envOr('DB_PASS', 'root123'));
+define('DB_NAME', envOr('DB_NAME', 'campus_reports'));
+// 'prefer' works locally (no SSL) and online. Online databases such as Neon need 'require'.
+define('DB_SSLMODE', envOr('DB_SSLMODE', 'prefer'));
 
 // The database container can take a few seconds to start, so retry the connection.
 $maxRetries = 10;
@@ -40,7 +50,7 @@ $lastError = '';
 for ($i = 0; $i < $maxRetries; $i++) {
     try {
         $conn = new PDO(
-            'pgsql:host=' . DB_HOST . ';port=' . DB_PORT . ';dbname=' . DB_NAME,
+            'pgsql:host=' . DB_HOST . ';port=' . DB_PORT . ';dbname=' . DB_NAME . ';sslmode=' . DB_SSLMODE,
             DB_USER,
             DB_PASS,
             [
